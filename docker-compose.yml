@@ -1,0 +1,20 @@
+# Custom services on top of the Supabase local stack.
+#
+# `supabase start` already runs Postgres/Auth/Storage/Studio as Docker
+# containers (the CLI manages its own compose project). This file adds OUR
+# services — duplicating the Supabase stack here would mean two databases
+# and two migration mechanisms. One command for everything: `npm run stack`.
+#
+# Portability note: the worker reaches the host's Supabase Postgres via
+# host.docker.internal. That name is built into Docker Desktop (macOS/
+# Windows); the extra_hosts entry below maps it on native Linux too
+# (host-gateway works on Docker 20.10+).
+services:
+  worker:
+    build: ./worker
+    environment:
+      DATABASE_URL: ${WORKER_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+      HEARTBEAT_INTERVAL_MS: ${WORKER_HEARTBEAT_MS:-30000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
