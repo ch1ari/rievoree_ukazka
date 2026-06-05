@@ -1,0 +1,13 @@
+# dependencies / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# environment — NEVER commit keys
+.env
+.env.*
+!.env.example
+
+# editor/os noise
+.DS_Store
+*.local

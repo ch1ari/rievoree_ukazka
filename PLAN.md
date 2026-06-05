@@ -22,11 +22,11 @@ Toto NIE JE klon žiadnej existujúcej aplikácie. Staviame od nuly.
 
 ## 2. Stack
 
-- **Frontend:** React 18 + TypeScript + Vite + Tailwind + shadcn/ui
+- **Frontend:** React 19 + TypeScript + Vite + Tailwind v4 + shadcn/ui + TanStack Router/Query
 - **Backend:** Supabase (PostgreSQL + Edge Functions v Deno)
 - **Docker:** docker-compose s lokálnym Postgresom + 1 vlastný service (ETL/metrics worker)
 - **CI:** GitHub Actions (lint, typecheck, test, migration-safety scanner)
-- **Animácie:** (knižnica — viď SETUP, inštaluje Claude Code)
+- **Animácie:** motion (Framer Motion), import z `motion/react`
 
 ---
 
