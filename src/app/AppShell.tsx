@@ -1,4 +1,5 @@
 import { Link, Outlet } from "@tanstack/react-router"
+import { XRayPanel } from "@/components/xray/XRayPanel"
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard" },
@@ -32,6 +33,7 @@ export function AppShell() {
                 {item.label}
               </Link>
             ))}
+            <XRayPanel />
           </nav>
         </div>
       </header>
