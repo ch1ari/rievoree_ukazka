@@ -210,3 +210,11 @@ values
 
 select private.transform_batch('f0000000-0000-4000-8000-000000000001');
 select private.detect_anomalies('f0000000-0000-4000-8000-000000000001');
+
+-- ----------------------------------------------------------------------------
+-- 7. Populate the report aggregate now that the history is loaded. The MV is
+--    created (empty) by migration 11 BEFORE this seed runs; pg_cron keeps it
+--    fresh thereafter, but the first reset needs an explicit refresh so the
+--    Reports page has data immediately.
+-- ----------------------------------------------------------------------------
+refresh materialized view private.mv_account_monthly;
