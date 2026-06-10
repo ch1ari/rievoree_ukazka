@@ -14,7 +14,15 @@ services:
     build: ./worker
     environment:
       DATABASE_URL: ${WORKER_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
-      HEARTBEAT_INTERVAL_MS: ${WORKER_HEARTBEAT_MS:-30000}
+      WORKER_POLL_MS: ${WORKER_POLL_MS:-2000}
+      # Storage access for downloading the uploaded file (service role bypasses
+      # the private ingest bucket). For local dev the worker reaches the host's
+      # Supabase via host.docker.internal.
+      SUPABASE_URL: ${WORKER_SUPABASE_URL:-http://host.docker.internal:54321}
+      SUPABASE_SERVICE_ROLE_KEY: ${WORKER_SERVICE_ROLE_KEY:-}
+      # Optional human-stable worker identity for the X-ray "who holds this job"
+      # view; defaults to <container-hostname>#<pid> when unset.
+      WORKER_ID: ${WORKER_ID:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

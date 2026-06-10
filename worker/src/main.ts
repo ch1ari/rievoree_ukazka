@@ -1,52 +1,94 @@
 /**
- * ETL / metrics worker — Phase 1 placeholder.
+ * ETL worker — the ingest_queue consumer (Phase 2/3).
  *
- * What it does today: connects to Postgres, reports the ingest queue depth
- * on a heartbeat. What it becomes (Phase 3): the queue consumer — claim one
- * job via FOR UPDATE SKIP LOCKED + advisory lock, run the ETL step, repeat.
+ * Loop: claim one job (FOR UPDATE SKIP LOCKED, with stale-lease reclaim), fetch
+ * + parse + sanitize the file, then run staging-insert → transform_batch →
+ * detect_anomalies in ONE transaction. load_batch is NOT run here — the batch
+ * stops at 'awaiting_review' for the manager-approval step (auth phase).
  *
- * Deliberately resilient at startup: if the database is not up yet
- * (`supabase start` still booting), it logs and retries instead of
+ * Resilient at startup: if the DB is not up yet it logs and retries instead of
  * crash-looping the container.
  */
-import postgres from "postgres"
+import postgres from "postgres";
+import {
+  claimJob,
+  completeJob,
+  failJob,
+  makeWorkerId,
+  processJob,
+} from "./db.ts";
 
 const DATABASE_URL = Deno.env.get("DATABASE_URL") ??
-  "postgresql://postgres:postgres@host.docker.internal:54322/postgres"
-const HEARTBEAT_MS = Number(Deno.env.get("HEARTBEAT_INTERVAL_MS") ?? 30_000)
+  "postgresql://postgres:postgres@host.docker.internal:54322/postgres";
+const POLL_MS = Number(Deno.env.get("WORKER_POLL_MS") ?? 2000);
 
 const sql = postgres(DATABASE_URL, {
-  max: 2,
+  max: 4,
   connect_timeout: 5,
   onnotice: () => {},
-})
+});
+const workerId = makeWorkerId();
 
-function log(level: "info" | "warn", msg: string, extra?: unknown) {
+function log(level: "info" | "warn" | "error", msg: string, extra?: unknown) {
   console.log(JSON.stringify({
     ts: new Date().toISOString(),
     level,
     component: "worker",
+    workerId,
     msg,
     ...(extra ? { extra } : {}),
-  }))
+  }));
 }
 
-log("info", `worker starting, heartbeat every ${HEARTBEAT_MS}ms`)
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+log("info", `worker starting, poll every ${POLL_MS}ms`);
 
 while (true) {
+  let job;
   try {
-    const [row] = await sql<{ pending: string }[]>`
-      select count(*) as pending
-      from public.ingest_queue
-      where status = 'pending'
-    `
-    log("info", "heartbeat", { pendingJobs: Number(row.pending) })
-    // TODO Phase 3: claim one job (FOR UPDATE SKIP LOCKED + advisory lock)
-    // and run the ETL step instead of just counting.
+    job = await claimJob(sql, workerId);
   } catch (error) {
-    log("warn", "db not reachable yet, will retry", {
+    log("warn", "claim failed (db not reachable yet?), will retry", {
       error: error instanceof Error ? error.message : String(error),
-    })
+    });
+    await sleep(POLL_MS);
+    continue;
   }
-  await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS))
+
+  if (!job) {
+    await sleep(POLL_MS); // idle: nothing ready
+    continue;
+  }
+
+  log("info", "job claimed", {
+    jobId: job.id,
+    batchId: job.batch_id,
+    attempt: job.attempts,
+  });
+  try {
+    const result = await processJob(sql, job);
+    await completeJob(sql, job);
+    log("info", "job done → awaiting_review", {
+      jobId: job.id,
+      batchId: job.batch_id,
+      stagedRows: result.rows,
+    });
+  } catch (error) {
+    log("error", "job failed", {
+      jobId: job.id,
+      batchId: job.batch_id,
+      attempt: job.attempts,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    try {
+      await failJob(sql, job, error);
+    } catch (failErr) {
+      log("error", "failJob errored", {
+        jobId: job.id,
+        error: failErr instanceof Error ? failErr.message : String(failErr),
+      });
+    }
+  }
+  // Loop straight back to drain the queue; only sleep when idle.
 }
