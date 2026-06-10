@@ -385,6 +385,13 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# ingest-submit: both actions require an authenticated caller. The platform
+# rejects anonymous requests before the function runs; inside, the user's JWT
+# drives RLS and submit_batch's permission re-check.
+[functions.ingest-submit]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
