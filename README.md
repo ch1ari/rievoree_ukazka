@@ -70,6 +70,30 @@ WORKER_DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/po
   docker compose up -d
 ```
 
+## Demo data & login
+
+`supabase db reset` (and the first `supabase start`) seeds local-only demo data
+via `supabase/seed.sql`: four tenants, 18 months of deterministic history
+(~11k journal rows, no `random()`), and one Northwind batch left at
+`awaiting_review` with a real Utilities spike flagged by the anomaly detector
+(~200σ over its 12-month baseline).
+
+> **Local only.** `supabase db push` ships `migrations/`, never `seed.sql`, so
+> these shared-password demo users never reach a remote project.
+
+All demo users share the password **`demo123456`**:
+
+| Email | Role | Sees entities |
+|---|---|---|
+| `super@demo.local` | super_admin | all 4 (and may assign membership) |
+| `admin@demo.local` | admin | all 4 |
+| `manager@demo.local` | manager | Northwind + Acme (2) |
+| `viewer@demo.local` | viewer | Northwind (1) |
+
+Same query, different rows per role — the RLS contrast the X-ray panel showcases.
+Managers/admins also see the ingest machinery (`journal_staging`, the flagged
+batch); viewers only see finished reports (`journal_entries`).
+
 ## Security model (Phase 1)
 
 - **Multi-tenant RLS** on every table, keyed by `entities`; global roles
