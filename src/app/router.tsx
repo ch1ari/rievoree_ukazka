@@ -9,6 +9,7 @@ import { Connectors } from "@/pages/Connectors"
 import { Dashboard } from "@/pages/Dashboard"
 import { Ingest } from "@/pages/Ingest"
 import { Landing } from "@/pages/Landing"
+import { Login } from "@/pages/Login"
 import { Reports } from "@/pages/Reports"
 import { Users } from "@/pages/Users"
 
@@ -21,6 +22,14 @@ const rootRoute = createRootRoute({ component: AppShell })
 
 const routes = [
   createRoute({ getParentRoute: () => rootRoute, path: "/", component: Landing }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/login",
+    component: Login,
+    validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+      redirect: typeof search.redirect === "string" ? search.redirect : undefined,
+    }),
+  }),
   createRoute({ getParentRoute: () => rootRoute, path: "/dashboard", component: Dashboard }),
   createRoute({ getParentRoute: () => rootRoute, path: "/ingest", component: Ingest }),
   createRoute({ getParentRoute: () => rootRoute, path: "/reports", component: Reports }),

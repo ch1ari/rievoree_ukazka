@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
+import { useAuth } from "@/lib/auth/useAuth"
 
 /**
  * RLS — "same query, three identities". The core demo moment: run the IDENTICAL
@@ -54,8 +55,13 @@ interface RunResult {
 }
 
 export function RlsTab() {
+  // Single source of truth: the active identity comes from AuthProvider, so this
+  // banner stays consistent whether you signed in via /login or "Run as…" here.
+  const { role } = useAuth()
+  const active: Role | null =
+    role === "viewer" || role === "manager" || role === "admin" ? role : null
+
   const [results, setResults] = useState<Partial<Record<Role, RunResult>>>({})
-  const [active, setActive] = useState<Role | null>(null)
   const [busy, setBusy] = useState<Role | "reset" | null>(null)
 
   async function runAs(role: Role, email: string) {
@@ -80,7 +86,7 @@ export function RlsTab() {
           ? { count: 0, names: [], error: error.message }
           : { count: data.length, names: data.map((e) => e.name as string) },
       }))
-      setActive(role)
+      // active identity now flows from AuthProvider (onAuthStateChange).
     } finally {
       setBusy(null)
     }
@@ -90,7 +96,6 @@ export function RlsTab() {
     setBusy("reset")
     try {
       await supabase.auth.signOut()
-      setActive(null)
       setResults({})
     } finally {
       setBusy(null)
@@ -118,8 +123,8 @@ export function RlsTab() {
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
           acting as:{" "}
-          <span className={active ? "text-accent" : "text-foreground"}>
-            {active ?? "anonymous"}
+          <span className={role ? "text-accent" : "text-foreground"}>
+            {role ?? "anonymous"}
           </span>
         </span>
         <Button
