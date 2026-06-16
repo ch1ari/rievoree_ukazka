@@ -9,17 +9,32 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 import { useXRayEvents } from "@/lib/xray/useXRayEvents"
-import { xrayCollector } from "@/lib/xray/collector"
+import { CallsTab } from "./tabs/CallsTab"
+import { PipelineTab } from "./tabs/PipelineTab"
+import { RlsTab } from "./tabs/RlsTab"
 
 /**
- * X-ray panel shell (Phase 1c): dark console listing live instrumented
- * calls with timings. Phase 4 turns this into the full exhibit — RLS
- * explanations, SQL/EXPLAIN, security layers, architecture diagram.
+ * X-ray panel — the exhibit that makes the backend visible. A dark console
+ * drawer with three sections (Phase 4):
+ *   CALLS    — live fetch-layer stream (seam)
+ *   PIPELINE — live pipeline_events timeline (Realtime)
+ *   RLS      — "same query, three identities" demonstration
+ * SQL/EXPLAIN + ARCH diagram land later as nice-to-haves.
  */
+const TABS = [
+  { id: "calls", label: "Calls" },
+  { id: "pipeline", label: "Pipeline" },
+  { id: "rls", label: "RLS" },
+] as const
+
+type TabId = (typeof TABS)[number]["id"]
+
 export function XRayPanel() {
   const events = useXRayEvents()
   const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<TabId>("calls")
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -39,65 +54,49 @@ export function XRayPanel() {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="dark w-full border-l border-border bg-background text-foreground sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle className="font-mono text-sm uppercase tracking-widest">
-            🔬 X-ray — live backend calls
+
+      <SheetContent className="dark flex w-full flex-col gap-0 border-l border-border bg-background p-0 text-foreground sm:max-w-xl">
+        <SheetHeader className="gap-1 border-b border-border px-4 py-4">
+          <SheetTitle className="font-mono text-sm font-bold uppercase tracking-widest">
+            🔬 X-RAY<span className="text-accent">/</span>
           </SheetTitle>
           <SheetDescription className="font-mono text-xs">
-            Every Supabase request on this page, timed at the fetch layer.
+            The backend, made visible — calls, pipeline, and RLS, live.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-1 overflow-y-auto px-4 pb-4 font-mono text-xs">
-          {events.length === 0 ? (
-            <p className="text-muted-foreground">
-              No backend calls yet. Navigate or load data and watch this
-              stream. (Pages start calling the API in Phase 2.)
-            </p>
-          ) : (
-            events
-              .slice()
-              .reverse()
-              .map((e) => (
-                <div
-                  key={e.id}
-                  className="flex items-baseline justify-between gap-3 border-b border-border py-1.5"
-                >
-                  <span className="truncate">
-                    <span className="text-accent">{e.kind}</span>{" "}
-                    <span className="text-muted-foreground">{e.method}</span>{" "}
-                    {e.target}
-                  </span>
-                  <span className="shrink-0 tabular-nums">
-                    <span
-                      className={
-                        e.status >= 200 && e.status < 300
-                          ? "text-muted-foreground"
-                          : "text-destructive"
-                      }
-                    >
-                      {e.status === -1 ? "ERR" : e.status}
-                    </span>{" "}
-                    {e.durationMs}ms
-                  </span>
-                </div>
-              ))
-          )}
+        {/* Tab bar — mono uppercase, accent underline on active (matches nav). */}
+        <div
+          role="tablist"
+          aria-label="X-ray sections"
+          className="flex shrink-0 items-center gap-6 border-b border-border px-4"
+        >
+          {TABS.map((t) => {
+            const active = t.id === tab
+            return (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "-mb-px border-b-2 py-2.5 font-mono text-xs uppercase tracking-widest transition-colors",
+                  active
+                    ? "border-accent text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
-        {events.length > 0 && (
-          <div className="border-t border-border p-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="font-mono text-xs"
-              onClick={() => xrayCollector.clear()}
-            >
-              Clear
-            </Button>
-          </div>
-        )}
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {tab === "calls" && <CallsTab />}
+          {tab === "pipeline" && <PipelineTab />}
+          {tab === "rls" && <RlsTab />}
+        </div>
       </SheetContent>
     </Sheet>
   )

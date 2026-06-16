@@ -11,3 +11,7 @@ dist/
 # editor/os noise
 .DS_Store
 *.local
+
+# test artifacts (browser screenshots, playwright output)
+.playwright-mcp/
+xray-*.png
