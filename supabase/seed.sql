@@ -218,3 +218,40 @@ select private.detect_anomalies('f0000000-0000-4000-8000-000000000001');
 --    Reports page has data immediately.
 -- ----------------------------------------------------------------------------
 refresh materialized view private.mv_account_monthly;
+
+-- ----------------------------------------------------------------------------
+-- 8. notify-review endpoint config (LOCAL ONLY) — the local half of the
+--    local≠remote Vault guard for migration 17's pg_net trigger.
+--
+--    These are the standard, PUBLIC, fixed local demo values:
+--      * URL  : the internal Kong gateway hostname, reachable from the db
+--               container (verified: db resolves `kong`), routing to the bundled
+--               edge runtime that serves supabase/functions/.
+--      * key  : the well-known local demo service_role JWT (iss=supabase-demo,
+--               signed with the default local JWT secret). This is NOT a real
+--               secret and NOT the remote key — it is identical on every local
+--               Supabase install, hence safe to commit here. The REAL remote
+--               service_role key is set on remote via vault.create_secret and is
+--               NEVER committed (migration 17 header).
+--
+--    Placed at the END of seed (after transform/detect above): on `db reset`
+--    those calls run BEFORE these secrets exist, so the notify_review trigger
+--    fail-soft skips during seeding — db reset performs no network I/O and the
+--    net queue / pipeline_events stay clean. The secrets are then available for
+--    the app and for manual round-trip testing.
+--
+--    Idempotent: create only if absent, so a re-seed without a reset won't error.
+-- ----------------------------------------------------------------------------
+select vault.create_secret(
+  'http://kong:8000/functions/v1/notify-review',
+  'edge_notify_review_url',
+  'LOCAL notify-review endpoint (internal Kong gateway)'
+)
+where not exists (select 1 from vault.secrets where name = 'edge_notify_review_url');
+
+select vault.create_secret(
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU',
+  'edge_service_role_key',
+  'LOCAL demo service_role JWT (public, fixed, NOT the remote key)'
+)
+where not exists (select 1 from vault.secrets where name = 'edge_service_role_key');

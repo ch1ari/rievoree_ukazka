@@ -392,6 +392,13 @@ deno_version = 2
 enabled = true
 verify_jwt = true
 
+# notify-review: invoked server-to-server by pg_net (private.notify_review).
+# verify_jwt stays on — pg_net sends the service_role JWT as the bearer, which
+# the platform accepts before the function runs (same posture as ingest-submit).
+[functions.notify-review]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
