@@ -118,6 +118,52 @@
   .animate-shimmer {
     animation: shimmer 3.5s linear infinite;
   }
+
+  /* ---- X-ray reveal ------------------------------------------------------ */
+  .xray-reveal { --lens-r: 94px; }
+
+  /* Surface (orbs) made transparent inside the lens → machinery shows through. */
+  .xray-surface {
+    -webkit-mask-image: radial-gradient(circle var(--lens-r) at var(--mx) var(--my),
+      transparent 0, transparent calc(var(--lens-r) - 30px), #000 var(--lens-r));
+    mask-image: radial-gradient(circle var(--lens-r) at var(--mx) var(--my),
+      transparent 0, transparent calc(var(--lens-r) - 30px), #000 var(--lens-r));
+  }
+  /* Lens ring follows the cursor (driven by the same --mx/--my). */
+  .xray-lens {
+    position: absolute;
+    left: var(--mx); top: var(--my);
+    width: calc(var(--lens-r) * 2); height: calc(var(--lens-r) * 2);
+    transform: translate(-50%, -50%);
+    border-radius: 9999px;
+    z-index: 5; pointer-events: none;
+    box-shadow:
+      0 0 0 1.5px oklch(0.76 0.13 185 / 0.55),
+      0 0 30px 4px oklch(0.70 0.19 35 / 0.22);
+  }
+  .orb {
+    border-radius: 9999px;
+    filter: blur(64px);
+    will-change: transform;
+    animation: orb-drift 20s ease-in-out infinite;
+  }
+  @keyframes orb-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%      { transform: translate(24px, -34px) scale(1.08); }
+  }
+  .xray-line {
+    will-change: opacity;
+    animation: xray-stream 4.5s ease-in-out infinite;
+  }
+  @keyframes xray-stream {
+    0%, 100% { opacity: 0.32; }
+    50%      { opacity: 0.95; }
+  }
+}
+
+/* Reduced motion: hold everything still, keep a calm static reveal. */
+@media (prefers-reduced-motion: reduce) {
+  .orb, .xray-line, .animate-shimmer { animation: none !important; }
 }
 
 @layer base {
