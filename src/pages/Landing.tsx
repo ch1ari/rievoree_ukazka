@@ -4,7 +4,7 @@ import { motion } from "motion/react"
 import { Workflow, ShieldCheck, ScanLine } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { OrbsBackground } from "@/components/OrbsBackground"
-import { XrayMode } from "@/components/XrayMode"
+import { XrayScan } from "@/components/XrayScan"
 
 // TODO(mariia): replace with your real links before deploy.
 const GITHUB_URL = "https://github.com/your-handle/xray-reporting-engine"
@@ -52,8 +52,8 @@ export function Landing() {
   return (
     <div className="-mx-6 -my-16">
       <OrbsBackground />
-      <XrayMode />
 
+      <XrayScan>
       {/* 1 — Hero */}
       <section className="px-6 pb-24 pt-24 md:px-16 md:pb-28 md:pt-28">
         <div className="mx-auto max-w-5xl">
@@ -182,6 +182,7 @@ export function Landing() {
           <span className="ml-auto font-mono text-xs text-muted-foreground">Fake data only</span>
         </Reveal>
       </div>
+      </XrayScan>
     </div>
   )
 }
