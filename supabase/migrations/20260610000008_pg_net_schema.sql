@@ -1,0 +1,27 @@
+-- ============================================================================
+-- Migration 18 — move pg_net out of the public schema (advisor 0014 fix)
+--
+-- Migration 17's `create extension pg_net` landed the extension in `public` on
+-- remote (a fresh project where pg_net did not pre-exist), tripping the
+-- 0014_extension_in_public security WARN. (Locally the Supabase image already
+-- ships pg_net in `extensions`, so 17 was a no-op there — hence the discrepancy.)
+--
+-- pg_net does NOT support `ALTER EXTENSION ... SET SCHEMA` (verified: errors
+-- "extension pg_net does not support SET SCHEMA"), so the only way to correct the
+-- namespace is drop + recreate WITH SCHEMA. This is safe:
+--   * pg_net's objects (http_post, http_request_queue, _http_response) live in
+--     the `net` schema regardless of the extension's namespace — verified before
+--     and after — so private.notify_review()'s `net.http_post` references are
+--     unaffected.
+--   * notify_review() references net.http_post only in its plpgsql BODY (not a
+--     tracked dependency), so the DROP does not cascade to it; after recreate the
+--     function resolves net.http_post again.
+--   * The remote net queue/response tables hold no real data yet (no dataset),
+--     so nothing of value is lost.
+--
+-- Idempotent and convergent: `if exists`/`if not exists` mean re-applying (or a
+-- local `db reset` where pg_net is already in `extensions`) always ends with the
+-- extension in `extensions` and its objects in `net`.
+-- ============================================================================
+drop extension if exists pg_net;
+create extension if not exists pg_net with schema extensions;
