@@ -1,0 +1,5 @@
+account,date,debit,credit,currency,memo
+1000,2026-06-05,5046,0,EUR,June cash receipt
+4000,2026-06-12,0,20027,EUR,June product sales
+6000,2026-06-25,11908,0,EUR,June salaries
+6100,2026-06-01,2971,0,EUR,June rent
