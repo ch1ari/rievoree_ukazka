@@ -1,0 +1,19 @@
+/**
+ * Full-bleed colourful orbs (system B) behind the whole page. Fixed so they sit
+ * under every section; gentle GPU-only drift (transform/opacity via the .orb
+ * keyframes in index.css). prefers-reduced-motion stops the drift (CSS).
+ * A faint background wash keeps text contrast over the orbs.
+ */
+export function OrbsBackground() {
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background">
+      <div className="orb absolute -left-10 top-[4%] size-80 bg-accent/40" style={{ animationDelay: "0s" }} />
+      <div className="orb absolute right-[2%] top-[18%] size-96 bg-signal/35" style={{ animationDelay: "-5s" }} />
+      <div className="orb absolute left-[34%] top-[44%] size-80 bg-amber-300/40" style={{ animationDelay: "-9s" }} />
+      <div className="orb absolute -right-10 top-[60%] size-96 bg-accent/30" style={{ animationDelay: "-3s" }} />
+      <div className="orb absolute left-[8%] top-[82%] size-80 bg-signal/30" style={{ animationDelay: "-7s" }} />
+      {/* readability wash */}
+      <div className="absolute inset-0 bg-background/35" />
+    </div>
+  )
+}

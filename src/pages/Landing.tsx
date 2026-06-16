@@ -3,7 +3,8 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { motion } from "motion/react"
 import { Workflow, ShieldCheck, ScanLine } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { XrayReveal } from "@/components/XrayReveal"
+import { OrbsBackground } from "@/components/OrbsBackground"
+import { XrayMode } from "@/components/XrayMode"
 
 // TODO(mariia): replace with your real links before deploy.
 const GITHUB_URL = "https://github.com/your-handle/xray-reporting-engine"
@@ -28,8 +29,6 @@ const ARCH = [
 const HEADLINE = ["See", "the", "machinery"]
 const SUBLINE =
   "Raw spreadsheets in. Validated, anomaly-screened reports out — and a live X-ray of every query, policy and job as it runs. No black boxes."
-// Light halo so text stays readable when the lens reveals the dark layer beneath.
-const halo = { textShadow: "0 2px 22px var(--color-background), 0 0 3px var(--color-background)" }
 
 export function Landing() {
   const navigate = useNavigate()
@@ -51,7 +50,10 @@ export function Landing() {
   }
 
   return (
-    <XrayReveal className="-mx-6 -my-16">
+    <div className="-mx-6 -my-16">
+      <OrbsBackground />
+      <XrayMode />
+
       {/* 1 — Hero */}
       <section className="px-6 pb-24 pt-24 md:px-16 md:pb-28 md:pt-28">
         <div className="mx-auto max-w-5xl">
@@ -60,34 +62,28 @@ export function Landing() {
             <span className="size-2 animate-pulse rounded-full bg-accent" /> Financial reporting engine
           </motion.span>
 
-          <h1 style={halo} className="mt-7 flex flex-wrap gap-x-4 text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
+          {/* Full animated gradient headline — word reveal + shimmer on "machinery." */}
+          <h1 className="mt-7 flex flex-wrap gap-x-4 text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl">
             {HEADLINE.map((w, i) => (
               <motion.span key={w}
                 initial={{ opacity: 0, y: 28, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 transition={{ duration: 0.6, delay: 0.1 + i * 0.12, ease: "easeOut" }}
                 className={i === HEADLINE.length - 1
-                  ? "animate-shimmer bg-[linear-gradient(110deg,var(--color-accent),45%,var(--color-signal),60%,var(--color-accent))] bg-[length:200%_100%] bg-clip-text text-transparent"
+                  ? "animate-shimmer bg-[linear-gradient(110deg,var(--color-accent),35%,var(--color-amber-400,#fbbf24),50%,var(--color-signal),70%,var(--color-accent))] bg-[length:200%_100%] bg-clip-text text-transparent"
                   : ""}>
                 {w}{i === HEADLINE.length - 1 ? "." : ""}
               </motion.span>
             ))}
           </h1>
 
-          <p style={halo} className="mt-7 max-w-2xl text-lg leading-relaxed text-foreground/70 md:text-xl">
+          <p className="mt-7 max-w-2xl text-lg leading-relaxed text-foreground/75 md:text-xl">
             {SUBLINE.split(" ").map((w, i) => (
               <motion.span key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.5 + i * 0.022 }}>{w}{" "}</motion.span>
             ))}
           </p>
 
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.0 }}
-            style={halo} className="mt-6 inline-flex items-center gap-2 font-mono text-xs text-accent">
-            <span className="size-1.5 animate-pulse rounded-full bg-signal" />
-            Move your cursor to x-ray the page — peek at the machinery underneath
-            <span className="text-muted-foreground">(illustrative · the live panel is inside)</span>
-          </motion.p>
-
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }}
-            className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0, duration: 0.5 }}
+            className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <button onClick={exploreDemo} disabled={exploring} className="rounded-full bg-accent px-8 py-4 text-base font-semibold text-accent-foreground shadow-soft transition hover:scale-[1.03] disabled:opacity-60">
               {exploring ? "Entering…" : "Explore the demo"}
             </button>
@@ -95,9 +91,9 @@ export function Landing() {
               Sign up
             </Link>
           </motion.div>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.3 }} style={halo} className="mt-4 max-w-md text-sm text-foreground/60">
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="mt-4 max-w-md text-sm text-foreground/65">
             <span className="rounded-full bg-signal/15 px-2 py-0.5 font-medium text-signal">Read-only sandbox</span>{" "}
-            — nothing you do is saved. Sign up for your own tenant to upload real data.
+            — nothing you do is saved. Tap <span className="font-mono text-foreground">X-ray this page</span> to see the real code behind it.
           </motion.p>
         </div>
       </section>
@@ -186,7 +182,7 @@ export function Landing() {
           <span className="ml-auto font-mono text-xs text-muted-foreground">Fake data only</span>
         </Reveal>
       </div>
-    </XrayReveal>
+    </div>
   )
 }
 
