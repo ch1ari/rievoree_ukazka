@@ -14,6 +14,8 @@ import { useXRayEvents } from "@/lib/xray/useXRayEvents"
 import { CallsTab } from "./tabs/CallsTab"
 import { PipelineTab } from "./tabs/PipelineTab"
 import { RlsTab } from "./tabs/RlsTab"
+import { SqlTab } from "./tabs/SqlTab"
+import { ArchTab } from "./tabs/ArchTab"
 
 /**
  * X-ray panel — the exhibit that makes the backend visible. A dark console
@@ -27,6 +29,8 @@ const TABS = [
   { id: "calls", label: "Calls" },
   { id: "pipeline", label: "Pipeline" },
   { id: "rls", label: "RLS" },
+  { id: "sql", label: "SQL" },
+  { id: "arch", label: "Arch" },
 ] as const
 
 type TabId = (typeof TABS)[number]["id"]
@@ -96,6 +100,8 @@ export function XRayPanel() {
           {tab === "calls" && <CallsTab />}
           {tab === "pipeline" && <PipelineTab />}
           {tab === "rls" && <RlsTab />}
+          {tab === "sql" && <SqlTab />}
+          {tab === "arch" && <ArchTab />}
         </div>
       </SheetContent>
     </Sheet>
