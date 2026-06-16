@@ -1,58 +1,66 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Type system (direction B — organic playful):
+   Fredoka = friendly rounded UI/display · JetBrains Mono = numbers / x-ray console. */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 /* ----------------------------------------------------------------------------
- * Editorial / brutalist-clean theme
- * Black & white + ONE accent (electric blue). Sharp edges: radius = 0.
- * Tokens follow the shadcn contract so every ui/ component picks them up.
+ * Direction B — "Organic playful": warm light canvas, coral accent + teal/amber
+ * supports, generous rounding, soft-blur depth, blob/gradient decor. The X-ray
+ * panel stays a dark console (.dark) but rounded + colour-matched.
+ * Tokens follow the shadcn contract so every ui/ component inherits them.
  * -------------------------------------------------------------------------- */
 :root {
-  --radius: 0rem;
+  --radius: 1rem;                          /* rounded everything */
 
-  --background: oklch(1 0 0);             /* pure white */
-  --foreground: oklch(0.145 0 0);          /* near-black ink */
+  --background: oklch(0.99 0.006 70);      /* warm off-white */
+  --foreground: oklch(0.30 0.02 265);      /* soft slate ink (not hard black) */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.30 0.02 265);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.145 0 0);             /* black buttons on white */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.145 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.55 0.23 262);          /* electric blue — the ONE accent */
+  --popover-foreground: oklch(0.30 0.02 265);
+  --primary: oklch(0.30 0.02 265);         /* slate primary */
+  --primary-foreground: oklch(0.99 0.006 70);
+  --secondary: oklch(0.96 0.012 70);       /* warm tint */
+  --secondary-foreground: oklch(0.30 0.02 265);
+  --muted: oklch(0.96 0.012 70);
+  --muted-foreground: oklch(0.55 0.02 265);
+  --accent: oklch(0.70 0.19 35);           /* coral / warm orange — the accent */
   --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.577 0.245 27.3);
+  --signal: oklch(0.72 0.12 185);          /* teal — positive / secondary */
+  --signal-foreground: oklch(1 0 0);
+  --destructive: oklch(0.60 0.22 25);      /* warm red */
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.145 0 0);              /* hard black hairlines */
-  --input: oklch(0.85 0 0);
-  --ring: oklch(0.55 0.23 262);
+  --border: oklch(0.91 0.01 70);           /* soft warm hairline (not black) */
+  --input: oklch(0.91 0.01 70);
+  --ring: oklch(0.70 0.19 35);
 }
 
-/* X-ray panel & dark surfaces: developer-console look */
+/* X-ray panel & dark surfaces — dark console, rounded + colour-matched to B */
 .dark {
-  --background: oklch(0.13 0 0);
-  --foreground: oklch(0.97 0 0);
-  --card: oklch(0.17 0 0);
-  --card-foreground: oklch(0.97 0 0);
-  --popover: oklch(0.17 0 0);
-  --popover-foreground: oklch(0.97 0 0);
-  --primary: oklch(0.97 0 0);
-  --primary-foreground: oklch(0.13 0 0);
-  --secondary: oklch(0.22 0 0);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.65 0.21 262);
-  --accent-foreground: oklch(0.13 0 0);
-  --destructive: oklch(0.65 0.22 27.3);
-  --destructive-foreground: oklch(0.13 0 0);
-  --border: oklch(0.3 0 0);
-  --input: oklch(0.3 0 0);
-  --ring: oklch(0.65 0.21 262);
+  --background: oklch(0.20 0.02 265);
+  --foreground: oklch(0.97 0.005 70);
+  --card: oklch(0.24 0.02 265);
+  --card-foreground: oklch(0.97 0.005 70);
+  --popover: oklch(0.24 0.02 265);
+  --popover-foreground: oklch(0.97 0.005 70);
+  --primary: oklch(0.97 0.005 70);
+  --primary-foreground: oklch(0.20 0.02 265);
+  --secondary: oklch(0.28 0.02 265);
+  --secondary-foreground: oklch(0.97 0.005 70);
+  --muted: oklch(0.28 0.02 265);
+  --muted-foreground: oklch(0.70 0.02 265);
+  --accent: oklch(0.74 0.17 40);           /* coral pops on dark */
+  --accent-foreground: oklch(0.20 0.02 265);
+  --signal: oklch(0.76 0.13 185);
+  --signal-foreground: oklch(0.20 0.02 265);
+  --destructive: oklch(0.68 0.20 25);
+  --destructive-foreground: oklch(0.20 0.02 265);
+  --border: oklch(0.34 0.02 265);
+  --input: oklch(0.34 0.02 265);
+  --ring: oklch(0.74 0.17 40);
 }
 
 @theme inline {
@@ -70,19 +78,46 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-signal: var(--signal);
+  --color-signal-foreground: var(--signal-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-sans: "Fredoka", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@layer utilities {
+  /* Soft-blur depth (no hard shadows in direction B). */
+  .shadow-soft {
+    box-shadow: 0 18px 40px -16px oklch(0.30 0.02 265 / 0.18);
+  }
+  /* Warm gradient mesh backdrop for hero / feature blocks. */
+  .bg-mesh {
+    background-image:
+      radial-gradient(60% 60% at 85% 10%, oklch(0.70 0.19 35 / 0.16), transparent 70%),
+      radial-gradient(50% 50% at 10% 90%, oklch(0.72 0.12 185 / 0.16), transparent 70%),
+      radial-gradient(40% 40% at 50% 50%, oklch(0.85 0.15 80 / 0.10), transparent 70%);
+  }
+  /* Organic blob radius (use with a fill colour + blur). */
+  .blob {
+    border-radius: 62% 38% 54% 46% / 49% 56% 44% 51%;
+  }
+  /* Animated gradient sweep for shimmer text. */
+  @keyframes shimmer {
+    to { background-position: -200% center; }
+  }
+  .animate-shimmer {
+    animation: shimmer 3.5s linear infinite;
+  }
 }
 
 @layer base {

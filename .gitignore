@@ -16,3 +16,4 @@ dist/
 .playwright-mcp/
 xray-*.png
 landing-*.png
+concept-*.png
