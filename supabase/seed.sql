@@ -47,7 +47,11 @@ from (values
   ('d0000000-0000-4000-8000-000000000001'::uuid, 'super@demo.local',   'Sasha Super'),
   ('d0000000-0000-4000-8000-000000000002'::uuid, 'admin@demo.local',   'Adam Admin'),
   ('d0000000-0000-4000-8000-000000000003'::uuid, 'manager@demo.local', 'Mira Manager'),
-  ('d0000000-0000-4000-8000-000000000004'::uuid, 'viewer@demo.local',  'Vera Viewer')
+  ('d0000000-0000-4000-8000-000000000004'::uuid, 'viewer@demo.local',  'Vera Viewer'),
+  -- The anonymous "Explore demo" identity: VIEWER role (server-side read-only —
+  -- submit_batch/approve_batch reject non-managers), but member of all 4 entities
+  -- so the demo shows rich data. Read-only is enforced by role, not by the UI.
+  ('d0000000-0000-4000-8000-000000000005'::uuid, 'demo@demo.local',    'Dana Demo')
 ) as u(id, email, full_name);
 
 insert into auth.identities (
@@ -84,7 +88,12 @@ insert into public.entity_members (entity_id, user_id, granted_by) values
   ('e0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000001'),
   -- manager → Northwind + Acme
   ('e0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001'),
-  ('e0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001');
+  ('e0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001'),
+  -- demo (read-only explorer) → all four entities, so anon sees rich data
+  ('e0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000001'),
+  ('e0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000001'),
+  ('e0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000001'),
+  ('e0000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000001');
 
 -- ----------------------------------------------------------------------------
 -- 3. Chart of accounts — the same 13-account chart for every entity.
