@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge"
+import { motion } from "motion/react"
 
 /**
  * Editorial page header: oversized title, generous whitespace, one accent.
@@ -10,18 +10,21 @@ export function PageHeader(props: {
   phase?: string
 }) {
   return (
-    <header className="border-b border-border pb-10">
+    <motion.header
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}
+      className="pb-10"
+    >
       {props.phase && (
-        <Badge className="mb-6 bg-accent text-accent-foreground font-mono text-xs uppercase tracking-widest">
+        <span className="mb-5 inline-block rounded-full bg-accent/12 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-accent ring-1 ring-accent/20">
           {props.phase}
-        </Badge>
+        </span>
       )}
-      <h1 className="text-6xl font-bold tracking-tighter md:text-7xl">
+      <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">
         {props.title}
       </h1>
-      <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+      <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
         {props.description}
       </p>
-    </header>
+    </motion.header>
   )
 }

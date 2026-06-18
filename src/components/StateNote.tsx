@@ -13,7 +13,7 @@ export function LoadingNote({ label = "loading…" }: { label?: string }) {
 
 export function ErrorNote({ message }: { message: string }) {
   return (
-    <div className="border border-destructive/50 bg-destructive/5 px-4 py-3 font-mono text-xs text-destructive">
+    <div className="rounded-2xl bg-destructive/5 px-5 py-4 font-mono text-xs text-destructive ring-1 ring-destructive/30">
       <p className="mb-1 uppercase tracking-widest">Query failed</p>
       <p className="break-words text-destructive/80">{message}</p>
     </div>
@@ -22,7 +22,7 @@ export function ErrorNote({ message }: { message: string }) {
 
 export function EmptyNote({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="border border-dashed border-border px-4 py-12 text-center font-mono text-xs text-muted-foreground">
+    <div className="rounded-2xl bg-card px-6 py-12 text-center font-mono text-xs text-muted-foreground shadow-soft ring-1 ring-border">
       <p className="uppercase tracking-widest text-foreground">{title}</p>
       {hint && <p className="mt-2 leading-relaxed">{hint}</p>}
     </div>

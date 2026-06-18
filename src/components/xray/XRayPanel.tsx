@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { ScanLine } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,34 +47,35 @@ export function XRayPanel() {
         <Button
           variant="outline"
           size="sm"
-          className="gap-2 font-mono text-xs"
+          className="gap-2 rounded-full font-mono text-xs"
           aria-label="Open X-ray panel"
         >
-          <span aria-hidden>🔬</span>
+          <ScanLine className="size-3.5" strokeWidth={2.25} />
           X-RAY
           {events.length > 0 && (
-            <Badge className="bg-accent px-1.5 text-accent-foreground">
+            <Badge className="rounded-full bg-accent px-2 text-accent-foreground">
               {events.length}
             </Badge>
           )}
         </Button>
       </SheetTrigger>
 
-      <SheetContent className="dark flex w-full flex-col gap-0 border-l border-border bg-background p-0 text-foreground sm:max-w-xl">
-        <SheetHeader className="gap-1 border-b border-border px-4 py-4">
-          <SheetTitle className="font-mono text-sm font-bold uppercase tracking-widest">
-            🔬 X-RAY<span className="text-accent">/</span>
+      <SheetContent className="dark flex w-full flex-col gap-0 overflow-hidden rounded-l-[1.5rem] bg-background p-0 text-foreground shadow-soft ring-1 ring-white/10 sm:max-w-xl">
+        <SheetHeader className="gap-1 border-b border-border px-5 py-5">
+          <SheetTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <ScanLine className="size-4 text-accent" strokeWidth={2.25} />
+            X-RAY<span className="bg-gradient-to-r from-accent to-signal bg-clip-text text-transparent">/</span>
           </SheetTitle>
           <SheetDescription className="font-mono text-xs">
             The backend, made visible — calls, pipeline, and RLS, live.
           </SheetDescription>
         </SheetHeader>
 
-        {/* Tab bar — mono uppercase, accent underline on active (matches nav). */}
+        {/* Tab bar — rounded pills, accent tint on active; scrolls on narrow widths. */}
         <div
           role="tablist"
           aria-label="X-ray sections"
-          className="flex shrink-0 items-center gap-6 border-b border-border px-4"
+          className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border px-4 py-2.5"
         >
           {TABS.map((t) => {
             const active = t.id === tab
@@ -84,10 +86,10 @@ export function XRayPanel() {
                 aria-selected={active}
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  "-mb-px border-b-2 py-2.5 font-mono text-xs uppercase tracking-widest transition-colors",
+                  "rounded-full px-3 py-1.5 font-mono text-xs uppercase tracking-widest whitespace-nowrap transition-colors",
                   active
-                    ? "border-accent text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
+                    ? "bg-accent/20 text-foreground"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
                 )}
               >
                 {t.label}

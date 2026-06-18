@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { motion } from "motion/react"
 import {
   Table,
   TableBody,
@@ -18,7 +19,7 @@ const eur = new Intl.NumberFormat("en-IE", {
 })
 
 const selectClass =
-  "border border-border bg-background px-2 py-1 font-mono text-xs uppercase tracking-wider"
+  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 export function Reports() {
   const { data: rows, isLoading, error } = useReport()
@@ -45,17 +46,20 @@ export function Reports() {
   )
 
   return (
-    <div>
-      <header className="border-b border-border pb-8">
-        <h1 className="text-6xl font-bold tracking-tighter md:text-7xl">Reports</h1>
-        <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+    <div className="relative">
+      <motion.header
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}
+        className="pb-10"
+      >
+        <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Reports</h1>
+        <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
           Per-account monthly roll-up from{" "}
-          <code className="font-mono text-base">report_account_monthly</code>,
+          <code className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-sm text-foreground ring-1 ring-border">report_account_monthly</code>,
           filtered to your entities by RLS.
         </p>
-      </header>
+      </motion.header>
 
-      <div className="mt-10">
+      <div>
         {isLoading ? (
           <LoadingNote label="loading report…" />
         ) : error ? (
@@ -98,7 +102,7 @@ export function Reports() {
                   ))}
                 </select>
               </label>
-              <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums">
+              <span className="ml-auto rounded-full bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground ring-1 ring-border tabular-nums">
                 {filtered.length.toLocaleString("en")} rows
               </span>
             </div>
@@ -106,9 +110,14 @@ export function Reports() {
             {filtered.length === 0 ? (
               <EmptyNote title="No rows match this filter" />
             ) : (
-              <div className="max-h-[60vh] overflow-y-auto border border-border">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-background">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+                className="overflow-hidden rounded-[1.5rem] bg-card shadow-soft ring-1 ring-border"
+              >
+                <div className="max-h-[60vh] overflow-y-auto">
+                <Table className="min-w-[720px]">
+                  <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
                       <TableHead className="font-mono text-[10px] uppercase tracking-wider">Period</TableHead>
                       <TableHead className="font-mono text-[10px] uppercase tracking-wider">Entity</TableHead>
@@ -135,7 +144,8 @@ export function Reports() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+                </div>
+              </motion.div>
             )}
           </>
         )}

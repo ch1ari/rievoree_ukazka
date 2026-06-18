@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { motion } from "motion/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,19 +19,20 @@ import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatch
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 
 const selectClass =
-  "w-full border border-border bg-background px-2 py-2 font-mono text-sm"
+  "w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 function canManage(role: string | null) {
   return role === "manager" || role === "admin" || role === "super_admin"
 }
 
-// Status → badge tone, all within the single accent / muted / destructive set.
+// Status → badge tone, across the cold palette (teal = done, periwinkle = in
+// review, destructive = failed, muted = in-flight). Logic/semantics unchanged.
 function statusTone(status: string): string {
-  if (status === "loaded") return "bg-accent text-accent-foreground"
-  if (status === "awaiting_review") return "border border-accent text-accent"
+  if (status === "loaded") return "bg-signal text-signal-foreground"
+  if (status === "awaiting_review") return "bg-cold/15 text-cold ring-1 ring-cold/30"
   if (status === "rejected" || status === "failed")
     return "bg-destructive text-destructive-foreground"
-  return "border border-border text-muted-foreground" // in-flight
+  return "bg-secondary text-muted-foreground ring-1 ring-border" // in-flight
 }
 
 export function Ingest() {
@@ -53,23 +55,26 @@ export function Ingest() {
   }
 
   return (
-    <div>
-      <header className="border-b border-border pb-8">
-        <h1 className="text-6xl font-bold tracking-tighter md:text-7xl">Ingest</h1>
-        <p className="mt-6 max-w-xl text-lg text-muted-foreground">
+    <div className="relative">
+      <motion.header
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}
+        className="pb-10"
+      >
+        <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Ingest</h1>
+        <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
           Upload a CSV/XLSX. The worker validates, transforms and z-score-checks
           it; anomalies wait for a manager's approval before loading.
         </p>
-      </header>
+      </motion.header>
 
       {/* Upload — only managers/admins may submit (submit_batch enforces it too). */}
       {!canManage(role) ? (
-        <div className="mt-10 border border-dashed border-border px-4 py-6 font-mono text-xs text-muted-foreground">
+        <div className="rounded-2xl bg-card px-6 py-6 font-mono text-xs leading-relaxed text-muted-foreground shadow-soft ring-1 ring-border">
           Your role is read-only — uploading and approving batches is for managers
           and admins. The server enforces this regardless of the UI.
         </div>
       ) : (
-      <form onSubmit={submit} className="mt-10 grid gap-4 border border-border p-5 md:grid-cols-4 md:items-end">
+      <form onSubmit={submit} className="grid gap-4 rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border md:grid-cols-4 md:items-end">
         <div className="space-y-1.5">
           <Label className="font-mono text-[10px] uppercase tracking-widest">Entity</Label>
           <select
@@ -128,8 +133,8 @@ export function Ingest() {
       )}
 
       {/* Batches */}
-      <section className="mt-10">
-        <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      <section className="mt-12">
+        <h2 className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
           Batches <span className="text-accent">· live</span>
         </h2>
         {batches.isLoading ? (
@@ -146,9 +151,9 @@ export function Ingest() {
             }
           />
         ) : (
-          <div className="border border-border">
-            <Table>
-              <TableHeader>
+          <div className="overflow-hidden rounded-[1.5rem] bg-card shadow-soft ring-1 ring-border">
+            <Table className="min-w-[640px]">
+              <TableHeader className="bg-secondary/50">
                 <TableRow>
                   <TableHead className="font-mono text-[10px] uppercase tracking-wider">File</TableHead>
                   <TableHead className="font-mono text-[10px] uppercase tracking-wider">Entity</TableHead>
@@ -165,7 +170,7 @@ export function Ingest() {
                     <TableCell className="font-mono text-xs">{names.get(b.entity_id) ?? b.entity_id.slice(0, 8)}</TableCell>
                     <TableCell className="font-mono text-xs tabular-nums">{b.period.slice(0, 7)}</TableCell>
                     <TableCell>
-                      <Badge className={cn("rounded-none font-mono text-[10px] uppercase tracking-wider", statusTone(b.status))}>
+                      <Badge className={cn("rounded-full font-mono text-[10px] uppercase tracking-wider", statusTone(b.status))}>
                         {b.status}
                       </Badge>
                     </TableCell>

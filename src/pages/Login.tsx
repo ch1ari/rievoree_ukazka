@@ -1,8 +1,10 @@
 import { useState } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
+import { Link, useNavigate, useSearch } from "@tanstack/react-router"
+import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { OrbsBackground } from "@/components/OrbsBackground"
 import { supabase } from "@/lib/supabase"
 
 /**
@@ -42,85 +44,101 @@ export function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-10 text-center">
-          <span className="text-3xl font-bold tracking-tighter">
-            X-RAY<span className="text-accent">/</span>
-          </span>
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-6">
+      <OrbsBackground />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-sm"
+      >
+        <div className="mb-8 text-center">
+          <Link to="/" className="text-3xl font-semibold tracking-tight">
+            X-RAY<span className="bg-gradient-to-r from-accent to-signal bg-clip-text text-transparent">/</span>
+          </Link>
           <p className="mt-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Sign in to continue
           </p>
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void signIn(email, password)
-          }}
-          className="space-y-4"
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="font-mono text-xs uppercase tracking-wider">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="font-mono"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="font-mono text-xs uppercase tracking-wider">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="font-mono"
-            />
-          </div>
+        <div className="rounded-[1.75rem] bg-card p-8 shadow-soft ring-1 ring-border">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void signIn(email, password)
+            }}
+            className="space-y-5"
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="font-mono text-xs uppercase tracking-wider">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="rounded-xl font-mono"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="font-mono text-xs uppercase tracking-wider">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="rounded-xl font-mono"
+              />
+            </div>
 
-          {error && (
-            <p role="alert" className="font-mono text-xs text-destructive">
-              {error}
+            {error && (
+              <p role="alert" className="font-mono text-xs text-destructive">
+                {error}
+              </p>
+            )}
+
+            <Button
+              type="submit"
+              size="lg"
+              disabled={busy}
+              className="w-full rounded-full bg-accent text-accent-foreground hover:bg-accent/90 hover:scale-[1.02]"
+            >
+              {busy ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+
+          {/* Demo convenience — one-click sign-in as a seeded role (local only). */}
+          <div className="mt-7 border-t border-border pt-6">
+            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Demo login
             </p>
-          )}
-
-          <Button type="submit" className="w-full font-mono" disabled={busy}>
-            {busy ? "Signing in…" : "Sign in"}
-          </Button>
-        </form>
-
-        {/* Demo convenience — one-click sign-in as a seeded role (local only). */}
-        <div className="mt-8 border-t border-border pt-6">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            Demo login
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {DEMO_USERS.map((u) => (
-              <Button
-                key={u.email}
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                className="font-mono text-xs"
-                onClick={() => void signIn(u.email, DEMO_PASSWORD)}
-              >
-                {u.label}
-              </Button>
-            ))}
+            <div className="grid grid-cols-3 gap-2">
+              {DEMO_USERS.map((u) => (
+                <Button
+                  key={u.email}
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  className="rounded-full font-mono text-xs"
+                  onClick={() => void signIn(u.email, DEMO_PASSWORD)}
+                >
+                  {u.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+
+        <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+          Read-only sandbox · seeded demo roles · fake data
+        </p>
+      </motion.div>
     </div>
   )
 }
