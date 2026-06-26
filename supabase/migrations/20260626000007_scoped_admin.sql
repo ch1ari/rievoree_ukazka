@@ -175,6 +175,82 @@ begin
 end;
 $$;
 
+-- submit_batch: a scoped admin may upload for their own entities.
+create or replace function public.submit_batch(
+  p_entity_id    uuid,
+  p_storage_path text,
+  p_file_name    text,
+  p_file_hash    text,
+  p_period       date
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid      uuid := (select auth.uid());
+  v_batch_id uuid;
+  v_existing uuid;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '28000';
+  end if;
+  if p_entity_id is null then
+    raise exception 'entity_id is required' using errcode = '22023';
+  end if;
+  if coalesce(p_file_name, '') = '' then
+    raise exception 'file_name is required' using errcode = '22023';
+  end if;
+  if p_file_hash is null or p_file_hash !~ '^[0-9a-f]{64}$' then
+    raise exception 'file_hash must be a sha-256 hex digest' using errcode = '22023';
+  end if;
+  if p_storage_path is null
+     or p_storage_path not like ('ingest/' || p_entity_id::text || '/%') then
+    raise exception 'storage_path must be under ingest/%/', p_entity_id
+      using errcode = '22023';
+  end if;
+  if p_period is null then
+    raise exception 'period is required' using errcode = '22023';
+  end if;
+
+  if not coalesce(
+    (select private.is_admin())
+    or (
+      (select private.user_role()) in ('manager', 'admin')
+      and p_entity_id in (select private.my_entity_ids())
+    ),
+    false
+  ) then
+    raise exception 'not authorized to submit a batch for entity %', p_entity_id
+      using errcode = '42501';
+  end if;
+
+  begin
+    insert into public.ingest_batches
+      (entity_id, uploaded_by, source, file_name, storage_path, file_hash, period, status)
+    values
+      (p_entity_id, v_uid, 'manual', p_file_name, p_storage_path, p_file_hash,
+       date_trunc('month', p_period::timestamp)::date, 'queued')
+    returning id into v_batch_id;
+  exception
+    when unique_violation then
+      select id into v_existing
+      from public.ingest_batches
+      where entity_id = p_entity_id
+        and file_hash = p_file_hash
+        and status not in ('rejected', 'failed')
+      limit 1;
+      return jsonb_build_object('status', 'duplicate', 'batch_id', v_existing);
+  end;
+
+  insert into public.ingest_queue (batch_id, job_type, payload)
+  values (v_batch_id, 'process_batch', '{}'::jsonb);
+
+  return jsonb_build_object('status', 'created', 'batch_id', v_batch_id);
+end;
+$$;
+
 -- set_entity_ruleset: a scoped admin may set rules for their own entities.
 create or replace function public.set_entity_ruleset(
   p_entity_id uuid,
