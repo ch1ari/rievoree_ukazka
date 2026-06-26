@@ -14,7 +14,6 @@ const fieldClass =
 const ROLE_OPTIONS = [
   { value: "manager", label: "Manager — upload & approve" },
   { value: "viewer", label: "Viewer — read-only" },
-  { value: "admin", label: "Admin — full access" },
 ]
 const DATA_OPTIONS = [
   { value: "demo", label: "Demo data — a clone to explore" },

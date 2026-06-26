@@ -4,11 +4,11 @@ import { Check, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/useAuth"
 import { setMyRole, type SwitchableRole } from "@/lib/auth/mfa"
+import { EntityManager } from "@/components/EntityManager"
 
 const ROLES: { value: SwitchableRole; label: string; blurb: string }[] = [
   { value: "viewer", label: "Viewer", blurb: "Read-only. Sees finished reports, but no ingest machinery or approvals." },
   { value: "manager", label: "Manager", blurb: "Uploads batches and approves them — the full ingest → review → load flow." },
-  { value: "admin", label: "Admin", blurb: "Everything a manager can do, across every entity you own." },
 ]
 
 export function Account() {
@@ -87,6 +87,8 @@ export function Account() {
           <p className="mt-4 font-mono text-xs text-accent">Role updated — try the Ingest and Reports pages.</p>
         )}
       </section>
+
+      <EntityManager />
     </div>
   )
 }

@@ -25,7 +25,10 @@ export async function signUpWithProfile(email: string, password: string, fullNam
 }
 
 export type ProvisionMode = "demo" | "own"
-export type SwitchableRole = "viewer" | "manager" | "admin"
+// Sandbox users are scoped to entities they own. Admin (which sees ALL entities,
+// including the showcase) is intentionally NOT offered — it would let a registrant
+// see/approve the showcase tenants. Viewer vs manager is the meaningful contrast.
+export type SwitchableRole = "viewer" | "manager"
 
 /** Post-signup setup: set the chosen role and build a personal sandbox — a clone
  *  of the demo data ('demo') or an empty workspace ('own'). Server-side RPC. */
@@ -37,6 +40,22 @@ export async function provisionAccount(mode: ProvisionMode, role: SwitchableRole
 /** Flip the current user's role live (only inside their own sandbox). */
 export async function setMyRole(role: SwitchableRole) {
   const { error } = await supabase.rpc("set_my_role", { p_role: role })
+  return { error: msg(error) }
+}
+
+/** Create an additional personal entity (clone of the demo data or empty). */
+export async function createMyEntity(name: string, mode: ProvisionMode) {
+  const { error } = await supabase.rpc("create_my_entity", { p_name: name, p_mode: mode })
+  return { error: msg(error) }
+}
+
+export async function renameMyEntity(entityId: string, name: string) {
+  const { error } = await supabase.rpc("rename_my_entity", { p_entity_id: entityId, p_name: name })
+  return { error: msg(error) }
+}
+
+export async function deleteMyEntity(entityId: string) {
+  const { error } = await supabase.rpc("delete_my_entity", { p_entity_id: entityId })
   return { error: msg(error) }
 }
 

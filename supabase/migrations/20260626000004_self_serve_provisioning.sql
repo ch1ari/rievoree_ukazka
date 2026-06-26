@@ -72,8 +72,10 @@ begin
   if p_mode not in ('demo', 'own') then
     raise exception 'mode must be demo or own' using errcode = '22023';
   end if;
-  if p_role not in ('viewer', 'manager', 'admin') then
-    raise exception 'role must be viewer, manager or admin' using errcode = '22023';
+  -- Sandbox users are viewer/manager only. Admin sees ALL entities (incl. the
+  -- showcase) — never granted to a self-registered user.
+  if p_role not in ('viewer', 'manager') then
+    raise exception 'role must be viewer or manager' using errcode = '22023';
   end if;
 
   select coalesce(nullif(full_name, ''), split_part(email, '@', 1))
@@ -183,8 +185,8 @@ begin
   if v_uid is null then
     raise exception 'authentication required' using errcode = '28000';
   end if;
-  if p_role not in ('viewer', 'manager', 'admin') then
-    raise exception 'role must be viewer, manager or admin' using errcode = '22023';
+  if p_role not in ('viewer', 'manager') then
+    raise exception 'role must be viewer or manager' using errcode = '22023';
   end if;
 
   -- Only inside your own sandbox: reject if any reachable entity isn't yours.
