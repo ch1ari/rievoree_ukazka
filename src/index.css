@@ -233,18 +233,15 @@
     will-change: transform;
   }
 
-  /* ---- The rip (PageTear) — a CLICKABLE torn hole in the right of the hero ---
-   * An organic HOLE torn in the lime "paper" page, filling the freed right-hand
-   * space. Everything outside the tear is transparent, so the page's own lime IS
-   * the surface — no panel/box. Through the hole you see the DARK DEPTH beneath
-   * the paper: a slice of our REAL source (?raw), the same code the X-ray reveals,
-   * glowing in emerald. The torn lime edge peels up (3D) and shadows the hole; an
-   * emerald glow rises from the depth and a scan-line sweeps down it. Clicking
-   * anywhere in the hole toggles the full-page X-ray.
+  /* ---- The rip (PageTear) — the page TORN OPEN at its right edge --------------
+   * No lime overlay: the dark depth is clipped to a hole and the real page shows
+   * around it (seamless). The inner layer is clipped to a SMOOTH rounded shape;
+   * an feTurbulence + feDisplacementMap filter on the PARENT (.rip-depth) roughens
+   * that already-clipped alpha edge into hand-torn fibre — organic, not a sawtooth.
+   * The hole's RIGHT side bleeds off-box, so the tear is anchored to the page edge.
    *
-   * Perf: ONLY transform animates (flap rotateX breathe + scan translateY), on
-   * composited layers. Clip-paths, grain, gradients, shadows are static.
-   * prefers-reduced-motion → flap held open, scan off. */
+   * Perf: only the scan translateY animates (composited, outside the filter). The
+   * torn edge + gradients are static. prefers-reduced-motion → scan off. */
   .rip {
     position: relative;
     display: block;
@@ -257,129 +254,94 @@
     pointer-events: auto;
   }
   .rip:focus-visible { outline: 2px solid oklch(0.20 0.04 150); outline-offset: 6px; border-radius: 6px; }
-  .rip-grain-def { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .rip-filter-def { position: absolute; width: 0; height: 0; overflow: hidden; }
   .rip-scene {
     position: relative;
     width: 100%;
     height: clamp(380px, 56vh, 600px);   /* tall — fills the freed right space */
-    perspective: 1400px;
-    perspective-origin: 50% 16%;         /* eye sits above the tear, looking down in */
   }
 
-  /* THE DARK DEPTH — visible ONLY inside the organic torn clip-path; the lime page
-     shows everywhere else, so the dark reads as a HOLE in the paper, not a box.
-     HAND-TORN irregular edges on ALL sides, leaving a lime margin in the column. */
+  /* The torn edge: the clipped inner is displaced by the filter on this parent. */
   .rip-depth {
     position: absolute; inset: 0;
-    overflow: hidden;
-    clip-path: polygon(
-      5% 11%, 12% 4%, 20% 12%, 29% 5%, 38% 12%, 47% 4%, 56% 12%, 65% 5%, 74% 12%, 83% 5%, 91% 12%, 96% 7%,
-      97% 20%, 94% 32%, 97% 44%, 94% 56%, 97% 68%, 94% 80%, 96% 90%,
-      89% 95%, 80% 89%, 71% 96%, 62% 90%, 53% 96%, 44% 90%, 35% 96%, 26% 90%, 17% 95%, 8% 90%,
-      4% 80%, 7% 68%, 4% 56%, 7% 44%, 4% 32%, 6% 20%
-    );
-    background: linear-gradient(160deg,
-      oklch(0.04 0.004 250) 0%,
-      oklch(0.07 0.006 250) 30%,
-      oklch(0.105 0.02 158) 70%,
-      oklch(0.18 0.07 158) 100%);
-    /* the overhanging torn paper shadows the rim on every side → a real recessed hole */
-    box-shadow:
-      inset 0 30px 34px -12px oklch(0 0 0 / 0.95),
-      inset 24px 0 30px -16px oklch(0 0 0 / 0.8),
-      inset -24px 0 30px -16px oklch(0 0 0 / 0.8),
-      inset 0 -22px 34px -8px oklch(0.72 0.12 158 / 0.5);
+    filter: url(#rip-torn);
+  }
+  /* The HOLE — a smooth rounded rect, inset on the torn sides (top/left/bottom)
+     and bleeding off the right edge. The parent filter tears this clean edge. */
+  .rip-depth-inner {
+    position: absolute; inset: 0;
+    clip-path: inset(10% -10% 11% 16% round 36px);
+    background:
+      radial-gradient(120% 90% at 50% 118%, oklch(0.20 0.08 158 / 0.9), transparent 60%),
+      linear-gradient(160deg,
+        oklch(0.045 0.004 250) 0%,
+        oklch(0.07 0.006 250) 38%,
+        oklch(0.10 0.018 158) 72%,
+        oklch(0.155 0.05 158) 100%);
   }
   /* The code reads like an editor pane: a left-aligned listing, centred in the
      widest part of the hole, away from the ragged rim. */
   .rip-code {
     position: absolute; inset: 0;
     display: flex; flex-direction: column; justify-content: center; gap: 1.15em;
-    padding: 13% 11% 14% 13%;
+    padding: 16% 12% 17% 21%;
   }
   .rip-code pre { text-shadow: 0 0 7px oklch(0.74 0.13 158 / 0.45); }  /* code glows */
   /* Hard shadow the overhanging top edge casts DOWN into the hole. */
   .rip-overhang {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(to bottom,
-      oklch(0 0 0 / 0.8) 0%, oklch(0 0 0 / 0.36) 14%, transparent 34%);
+      oklch(0 0 0 / 0.82) 0%, oklch(0 0 0 / 0.34) 16%, transparent 38%);
   }
   /* Emerald glow rising from the depth (light from below) — brightens on hover. */
   .rip-floor {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(to top,
-      oklch(0.72 0.13 158 / 0.42) 0%, oklch(0.72 0.12 158 / 0.1) 28%, transparent 56%);
+      oklch(0.72 0.13 158 / 0.4) 0%, oklch(0.72 0.12 158 / 0.1) 30%, transparent 58%);
     transition: opacity 0.3s ease;
   }
-  .rip:hover .rip-floor { opacity: 1.35; }
-  /* Scan-line sweeping DOWN the hole (echoes the X-ray scan). translateY ONLY. */
+  .rip:hover .rip-floor { opacity: 1.4; }
+  /* Scan-line sweeping DOWN the hole — a fixed clip container (clipped to the hole
+     shape, no displacement → never re-runs the filter per frame) with a moving band
+     inside it. translateY ONLY. */
   .rip-scan {
-    position: absolute; left: 0; right: 0; top: 0;
-    height: 26%; pointer-events: none;
+    position: absolute; inset: 0; pointer-events: none;
+    clip-path: inset(10% -10% 11% 16% round 36px);
+  }
+  .rip-scan::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26%;
     background: linear-gradient(to bottom,
-      transparent 0%, oklch(0.88 0.16 158 / 0.1) 42%, oklch(0.95 0.18 158 / 0.22) 50%,
-      oklch(0.88 0.16 158 / 0.1) 58%, transparent 100%);
+      transparent 0%, oklch(0.88 0.16 158 / 0.12) 42%, oklch(0.95 0.18 158 / 0.24) 50%,
+      oklch(0.88 0.16 158 / 0.12) 58%, transparent 100%);
     mix-blend-mode: screen;
     will-change: transform;
     transform: translateY(-120%);
     animation: rip-scan 6.5s ease-in-out infinite;
   }
 
-  /* ---- THE PEELED TORN LIME EDGE -----------------------------------------
-   * The paper at the TOP of the hole, lifted toward the viewer. Same lime as the
-   * page (reads as the page peeling, no top seam), lit torn bottom edge + shadow
-   * cast DOWN into the depth. Hinged at the TOP; rotateX tips the torn edge out. */
-  .rip-flap {
-    position: absolute;
-    left: 4%; right: 4%; top: 0;
-    height: 30%;
-    isolation: isolate;
-    background: linear-gradient(to bottom,
-      oklch(0.86 0.21 126) 0%, oklch(0.90 0.215 125) 72%, oklch(0.95 0.20 124) 100%);
-    clip-path: polygon(
-      0 0, 100% 0,
-      100% 40%, 95% 56%, 90% 70%, 84% 52%, 78% 72%, 72% 54%, 66% 73%, 60% 51%, 54% 70%,
-      48% 56%, 42% 72%, 36% 52%, 30% 71%, 24% 55%, 18% 72%, 13% 50%, 8% 68%, 3% 52%, 0 40%
-    );
-    transform-origin: 50% 0%;
-    transform: rotateX(28deg);
-    will-change: transform;
-    box-shadow:
-      inset 0 -24px 16px -10px oklch(0.99 0.15 123 / 1),     /* bright lit torn lip */
-      0 26px 26px -6px oklch(0 0 0 / 0.6);                   /* shadow cast DOWN into the hole */
-    animation: rip-breathe 7s ease-in-out infinite;
-  }
-  /* Matte paper grain — two static SVG feTurbulence passes on the lime flap. */
-  .rip-grain { position: absolute; inset: -2px; pointer-events: none; }
-  .rip-grain--tooth { filter: url(#rip-tooth); mix-blend-mode: multiply; opacity: 0.16; }
-  .rip-grain--fiber { filter: url(#rip-fiber); mix-blend-mode: soft-light; opacity: 0.24; }
-
-  /* "click to x-ray" hint — sits in the depth, brightens on hover. */
+  /* "click to x-ray" hint — sits low in the hole, brightens on hover. */
   .rip-hint {
-    position: absolute; left: 50%; bottom: 7%;
+    position: absolute; left: 50%; bottom: 8%;
     transform: translateX(-50%);
     display: inline-flex; align-items: center; gap: 0.5em;
-    padding: 0.5em 0.9em; border-radius: 9999px;
-    background: oklch(0.04 0.004 250 / 0.5);
-    border: 1px solid oklch(0.82 0.15 158 / 0.4);
-    color: oklch(0.86 0.15 158);
+    padding: 0.5em 0.95em; border-radius: 9999px;
+    background: oklch(0.05 0.006 250 / 0.62);
+    border: 1px solid oklch(0.82 0.15 158 / 0.45);
+    color: oklch(0.88 0.15 158);
     font-family: var(--font-mono);
-    font-size: 0.66rem; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase;
+    font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
     white-space: nowrap;
-    opacity: 0.72;
+    backdrop-filter: blur(2px);
+    opacity: 0.82;
     transition: opacity 0.3s ease, border-color 0.3s ease, background 0.3s ease;
   }
   .rip:hover .rip-hint {
     opacity: 1;
-    border-color: oklch(0.86 0.16 158 / 0.85);
-    background: oklch(0.06 0.01 158 / 0.6);
+    border-color: oklch(0.86 0.16 158 / 0.9);
+    background: oklch(0.07 0.012 158 / 0.7);
   }
 
-  /* ---- breathe + scan keyframes (the ONLY animations) --------------------- */
-  @keyframes rip-breathe {
-    0%, 100% { transform: rotateX(25deg); }
-    50%      { transform: rotateX(31deg); }
-  }
+  /* ---- scan keyframe (the ONLY animation) --------------------------------- */
   @keyframes rip-scan {
     0%   { transform: translateY(-120%); }
     100% { transform: translateY(400%); }
@@ -408,7 +370,7 @@
 
 /* Slightly smaller rip on small screens (it stacks below the hero copy there). */
 @media (max-width: 768px) {
-  .rip-scene { height: clamp(300px, 46vh, 420px); perspective: 1000px; }
+  .rip-scene { height: clamp(300px, 46vh, 420px); }
 }
 
 /* Reduced motion: hold everything still, keep a calm static reveal. */
@@ -418,8 +380,7 @@
   .ignite { animation: none !important; }
   .torn-glow { display: none !important; }
   .torn-code { transform: none !important; }
-  /* No breath — hold the torn edge peeled open + still, scan off. */
-  .rip-flap { animation: none !important; transform: rotateX(28deg) !important; }
+  /* The torn edge is already static; just stop the scan sweep. */
   .rip-scan { display: none !important; }
 }
 

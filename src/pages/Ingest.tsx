@@ -1,9 +1,10 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 import { motion } from "motion/react"
+import { UploadCloud } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SimpleSelect } from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -17,9 +18,6 @@ import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatches"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
-
-const selectClass =
-  "w-full rounded-lg border border-border bg-card px-3 py-2 font-mono text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 function canManage(role: string | null) {
   return role === "manager" || role === "admin" || role === "super_admin"
@@ -77,41 +75,23 @@ export function Ingest() {
       <form onSubmit={submit} className="grid gap-4 rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border md:grid-cols-4 md:items-end">
         <div className="space-y-1.5">
           <Label className="font-mono text-[10px] uppercase tracking-widest">Entity</Label>
-          <select
-            className={selectClass}
+          <SimpleSelect
+            size="default"
+            className="w-full"
+            aria-label="Entity"
+            placeholder="select…"
             value={entityId}
-            onChange={(e) => setEntityId(e.target.value)}
-            required
-          >
-            <option value="" disabled>
-              select…
-            </option>
-            {(entities ?? []).map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setEntityId}
+            options={(entities ?? []).map((e) => ({ value: e.id, label: e.name }))}
+          />
         </div>
         <div className="space-y-1.5">
           <Label className="font-mono text-[10px] uppercase tracking-widest">Period</Label>
-          <Input
-            type="month"
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            required
-            className="font-mono"
-          />
+          <MonthPicker value={period} onChange={setPeriod} />
         </div>
         <div className="space-y-1.5">
           <Label className="font-mono text-[10px] uppercase tracking-widest">File (CSV / XLSX)</Label>
-          <Input
-            type="file"
-            accept=".csv,.xlsx,text/csv"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            required
-            className="font-mono text-xs"
-          />
+          <FilePicker file={file} accept=".csv,.xlsx,text/csv" onPick={setFile} />
         </div>
         <Button type="submit" className="font-mono" disabled={upload.isPending}>
           {upload.isPending ? "Uploading…" : "Upload"}
@@ -213,4 +193,61 @@ function summarizeStats(stats: Record<string, unknown>): string {
     parts.push(`${stats.flagged_accounts} flagged`)
   if (typeof stats.rows_loaded === "number") parts.push(`${stats.rows_loaded} loaded`)
   return parts.length ? parts.join(" · ") : "—"
+}
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+/** A custom YYYY-MM picker (two styled selects) — replaces the native month input.
+ *  Emits "YYYY-MM"; the form appends "-01" before submitting. */
+function MonthPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const thisYear = new Date().getFullYear()
+  const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1]
+  const [y, m] = value ? value.split("-") : ["", ""]
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <SimpleSelect
+        size="default"
+        className="w-full"
+        aria-label="Year"
+        placeholder="Year"
+        value={y}
+        onValueChange={(ny) => onChange(`${ny}-${m || "01"}`)}
+        options={years.map((yr) => ({ value: String(yr), label: String(yr) }))}
+      />
+      <SimpleSelect
+        size="default"
+        className="w-full"
+        aria-label="Month"
+        placeholder="Month"
+        value={m}
+        onValueChange={(nm) => onChange(`${y || thisYear}-${nm}`)}
+        options={MONTH_LABELS.map((label, i) => ({ value: String(i + 1).padStart(2, "0"), label }))}
+      />
+    </div>
+  )
+}
+
+/** A custom file control — a styled trigger + filename, hiding the native input. */
+function FilePicker({ file, accept, onPick }: { file: File | null; accept: string; onPick: (f: File | null) => void }) {
+  const id = useId()
+  return (
+    <div>
+      <input
+        id={id}
+        type="file"
+        accept={accept}
+        className="sr-only"
+        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+      />
+      <label
+        htmlFor={id}
+        className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 font-mono text-xs outline-none transition hover:border-accent/60 focus-within:ring-2 focus-within:ring-accent/50"
+      >
+        <UploadCloud className="size-4 shrink-0 opacity-60" />
+        <span className={cn("truncate", file ? "text-foreground" : "text-muted-foreground")}>
+          {file ? file.name : "Choose file…"}
+        </span>
+      </label>
+    </div>
+  )
 }

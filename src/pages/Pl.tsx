@@ -8,12 +8,11 @@ import { useBudget } from "@/lib/data/useBudget"
 import { buildPl } from "@/lib/data/pl"
 import { Sparkline, COLORS } from "@/components/charts/FinancialCharts"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { SimpleSelect } from "@/components/ui/select"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
 // Accounting format — negatives in parentheses.
 const money = (n: number) => (n < 0 ? `(${eur.format(Math.abs(n))})` : eur.format(n))
-const selectClass =
-  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 const ROW = "grid grid-cols-[minmax(160px,1fr)_84px_repeat(3,minmax(78px,108px))_64px] items-center gap-x-3 px-5"
 
 export function Pl() {
@@ -58,17 +57,27 @@ export function Pl() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Entity
-              <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-                <option value="all">All ({names.size})</option>
-                {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Entity filter"
+                value={entityId}
+                onValueChange={setEntityId}
+                options={[
+                  { value: "all", label: `All (${names.size})` },
+                  ...[...names.entries()].map(([id, name]) => ({ value: id, label: name })),
+                ]}
+              />
             </label>
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Period
-              <select className={selectClass} value={period} onChange={(e) => setPeriod(e.target.value)}>
-                <option value="all">All (18 mo.)</option>
-                {periods.map((p) => <option key={p} value={p}>{p.slice(0, 7)}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Period filter"
+                value={period}
+                onValueChange={setPeriod}
+                options={[
+                  { value: "all", label: "All (18 mo.)" },
+                  ...periods.map((p) => ({ value: p, label: p.slice(0, 7) })),
+                ]}
+              />
             </label>
             {!hasBudget && (
               <span className="ml-auto rounded-full border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">

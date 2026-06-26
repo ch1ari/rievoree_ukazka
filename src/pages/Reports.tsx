@@ -8,10 +8,9 @@ import { useEntities } from "@/lib/data/useEntities"
 import { monthlyPnl, expenseByAccount } from "@/lib/data/aggregate"
 import { ChartCard, PnlTrend, ExpenseTreemap } from "@/components/charts/FinancialCharts"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { SimpleSelect } from "@/components/ui/select"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
-const selectClass =
-  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 export function Reports() {
   const { data: rows, isLoading, error } = useReport()
@@ -82,17 +81,27 @@ export function Reports() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Entity
-              <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-                <option value="all">All ({names.size})</option>
-                {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Entity filter"
+                value={entityId}
+                onValueChange={setEntityId}
+                options={[
+                  { value: "all", label: `All (${names.size})` },
+                  ...[...names.entries()].map(([id, name]) => ({ value: id, label: name })),
+                ]}
+              />
             </label>
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Period
-              <select className={selectClass} value={period} onChange={(e) => setPeriod(e.target.value)}>
-                <option value="all">All</option>
-                {periods.map((p) => <option key={p} value={p}>{p.slice(0, 7)}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Period filter"
+                value={period}
+                onValueChange={setPeriod}
+                options={[
+                  { value: "all", label: "All" },
+                  ...periods.map((p) => ({ value: p, label: p.slice(0, 7) })),
+                ]}
+              />
             </label>
             <span className="ml-auto rounded-full bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground ring-1 ring-border tabular-nums">
               {filtered.length.toLocaleString("en")} rows
