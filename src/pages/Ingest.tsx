@@ -18,11 +18,14 @@ import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatches"
 import { useEntityRuleset, useSaveRuleset, DEFAULT_RULES } from "@/lib/data/useRuleset"
-import { parseCsvToRows } from "@/lib/data/parseCsv"
+import { useEntityAccounts, useUpsertAccounts, type Account } from "@/lib/data/useAccounts"
+import { parseCsvToRows, type StagingRow } from "@/lib/data/parseCsv"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 import { IngestRules } from "@/components/IngestRules"
 import { IngestMapping } from "@/components/IngestMapping"
 import { BatchDetail } from "@/components/BatchDetail"
+import { ClassifyAccounts } from "@/components/ClassifyAccounts"
+import { ChartEditor } from "@/components/ChartEditor"
 
 function canManage(role: string | null) {
   return role === "manager" || role === "admin" || role === "super_admin"
@@ -63,12 +66,21 @@ export function Ingest() {
   const [file, setFile] = useState<File | null>(null)
   const [mapping, setMapping] = useState<Record<string, string[]> | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pending, setPending] = useState<{ rows: StagingRow[]; codes: string[] } | null>(null)
 
   const eff = useEntityRuleset(entityId || undefined)
   const saveRules = useSaveRuleset(entityId || undefined)
+  const accounts = useEntityAccounts(entityId || undefined)
+  const upsertAccounts = useUpsertAccounts(entityId || undefined)
 
   const names = new Map((entities ?? []).map((e) => [e.id, e.name]))
   const selected = (batches.data ?? []).find((b) => b.id === selectedId) ?? null
+
+  function doUpload(rows: StagingRow[] | null) {
+    if (!file) return
+    upload.mutate({ entityId, period: `${period}-01`, file, rows })
+    setPending(null)
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -86,15 +98,27 @@ export function Ingest() {
       } catch { return }
     }
 
-    // Parse CSV in the browser → typed rows for process_uploaded_rows. XLSX has
-    // no client parser, so we leave rows undefined (those still need the worker).
-    let rows: unknown[] | null = null
-    if (/\.csv$/i.test(file.name)) {
-      const text = await file.text()
-      rows = parseCsvToRows(text, aliases, rules.date_formats, rules.amount_mode).rows
-    }
+    // XLSX has no client parser → upload without rows (still needs the worker).
+    if (!/\.csv$/i.test(file.name)) { doUpload(null); return }
 
-    upload.mutate({ entityId, period: `${period}-01`, file, rows })
+    // Parse CSV in the browser → typed rows for process_uploaded_rows.
+    const text = await file.text()
+    const rows = parseCsvToRows(text, aliases, rules.date_formats, rules.amount_mode).rows
+
+    // Any account codes not yet in the chart? Classify them first, then upload.
+    const have = new Set((accounts.data ?? []).map((a) => a.code))
+    const unknown = [...new Set(rows.map((r) => r.account_code).filter((c): c is string => !!c && !have.has(c)))]
+    if (unknown.length) { setPending({ rows, codes: unknown }); return }
+
+    doUpload(rows)
+  }
+
+  async function confirmClassify(newAccounts: Account[]) {
+    if (!pending) return
+    try {
+      await upsertAccounts.mutateAsync(newAccounts)
+    } catch { return } // error surfaced via upsertAccounts.isError below
+    doUpload(pending.rows)
   }
 
   return (
@@ -168,9 +192,29 @@ export function Ingest() {
       </form>
       )}
 
-      {/* Approval rules — what passes the import for this entity. */}
+      {/* New account codes in the file → classify them, then the upload continues. */}
+      {pending && (
+        <>
+          <ClassifyAccounts
+            codes={pending.codes}
+            busy={upsertAccounts.isPending || upload.isPending}
+            onConfirm={confirmClassify}
+            onCancel={() => setPending(null)}
+          />
+          {upsertAccounts.isError && (
+            <p role="alert" className="mt-2 font-mono text-xs text-destructive">
+              {(upsertAccounts.error as Error).message}
+            </p>
+          )}
+        </>
+      )}
+
+      {/* Approval rules + chart of accounts for this entity. */}
       {canManage(role) && entityId && (
-        <IngestRules entityId={entityId} entityName={names.get(entityId)} />
+        <>
+          <IngestRules entityId={entityId} entityName={names.get(entityId)} />
+          <ChartEditor entityId={entityId} entityName={names.get(entityId)} />
+        </>
       )}
 
       {/* Batches */}

@@ -54,6 +54,18 @@ export interface ExecPoint {
   month: string; revenue: number; ebitda: number; cash: number; ar: number; dso: number; marginPct: number
 }
 
+// Identify cash / receivable accounts flexibly: the demo's fixed codes first,
+// else by name keyword (EN + SK/CZ) on an asset account — so custom charts still
+// power the Cash & DSO KPIs instead of showing zero.
+function isCashRow(r: ReportRow): boolean {
+  if (r.account_code === "1000") return true
+  return r.account_type === "asset" && /\b(cash|bank)\b|pokladn|banka/i.test(r.account_name)
+}
+function isReceivableRow(r: ReportRow): boolean {
+  if (r.account_code === "1100") return true
+  return r.account_type === "asset" && /receivab|pohľad|pohlad|odberate/i.test(r.account_name)
+}
+
 export function executiveSeries(rows: ReportRow[]): ExecPoint[] {
   const m = new Map<string, { revenue: number; expenses: number; cashFlow: number; arFlow: number }>()
   for (const r of rows) {
@@ -61,8 +73,8 @@ export function executiveSeries(rows: ReportRow[]): ExecPoint[] {
     const e = m.get(key) ?? { revenue: 0, expenses: 0, cashFlow: 0, arFlow: 0 }
     if (r.account_type === "revenue") e.revenue += Number(r.credit)
     else if (r.account_type === "expense") e.expenses += Number(r.debit)
-    if (r.account_code === "1000") e.cashFlow += Number(r.net) // Cash (debit-normal)
-    if (r.account_code === "1100") e.arFlow += Number(r.net)   // Accounts Receivable
+    if (isCashRow(r)) e.cashFlow += Number(r.net)       // Cash (debit-normal)
+    if (isReceivableRow(r)) e.arFlow += Number(r.net)   // Accounts Receivable
     m.set(key, e)
   }
   const sorted = [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
