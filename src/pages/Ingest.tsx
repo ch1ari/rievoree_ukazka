@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatches"
-import { useEntityRuleset, useSaveRuleset } from "@/lib/data/useRuleset"
+import { useEntityRuleset, useSaveRuleset, DEFAULT_RULES } from "@/lib/data/useRuleset"
+import { parseCsvToRows } from "@/lib/data/parseCsv"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 import { IngestRules } from "@/components/IngestRules"
 import { IngestMapping } from "@/components/IngestMapping"
@@ -34,6 +35,19 @@ function statusTone(status: string): string {
   if (status === "rejected" || status === "failed")
     return "bg-destructive text-destructive-foreground"
   return "bg-secondary text-muted-foreground ring-1 ring-border" // in-flight
+}
+
+// Plain-language status for non-technical users (the raw enum stays in the X-ray).
+function statusLabel(status: string): string {
+  switch (status) {
+    case "loaded": return "Done"
+    case "awaiting_review": return "Needs review"
+    case "rejected":
+    case "failed": return "Failed"
+    case "received":
+    case "queued": return "Waiting"
+    default: return "Processing" // validating / transforming / loading
+  }
 }
 
 export function Ingest() {
@@ -56,17 +70,28 @@ export function Ingest() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!file || !entityId || !period) return
-    // Persist the column mapping onto the entity's ruleset so the worker reads
-    // the right columns; abort the upload if that publish fails.
+
+    // Effective aliases = the entity ruleset's, plus any manual mapping the user set.
+    const rules = eff.data?.rules ?? DEFAULT_RULES
+    const aliases = { ...rules.header_aliases, ...(mapping ?? {}) }
+
+    // Persist the mapping onto the entity's ruleset (record of how it was read);
+    // abort the upload if that publish fails.
     if (mapping && eff.data) {
       try {
-        await saveRules.mutateAsync({
-          ...eff.data.rules,
-          header_aliases: { ...eff.data.rules.header_aliases, ...mapping },
-        })
+        await saveRules.mutateAsync({ ...eff.data.rules, header_aliases: aliases })
       } catch { return }
     }
-    upload.mutate({ entityId, period: `${period}-01`, file })
+
+    // Parse CSV in the browser → typed rows for process_uploaded_rows. XLSX has
+    // no client parser, so we leave rows undefined (those still need the worker).
+    let rows: unknown[] | null = null
+    if (/\.csv$/i.test(file.name)) {
+      const text = await file.text()
+      rows = parseCsvToRows(text, aliases, rules.date_formats, rules.amount_mode).rows
+    }
+
+    upload.mutate({ entityId, period: `${period}-01`, file, rows })
   }
 
   return (
@@ -75,12 +100,15 @@ export function Ingest() {
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}
         className="pb-10"
       >
-        <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Ingest</h1>
-        <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          Upload a CSV/XLSX. The worker validates, transforms and z-score-checks
-          it; anomalies wait for a manager's approval before loading.
+        <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Upload data</h1>
+        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+          Upload a CSV of your monthly accounting entries. We check each row,
+          flag anything unusual (a number far outside its history), and once you
+          approve it, the figures appear across your reports.
         </p>
       </motion.header>
+
+      {canManage(role) && <UploadGuide />}
 
       {/* Upload — only managers/admins may submit (submit_batch enforces it too). */}
       {!canManage(role) ? (
@@ -180,8 +208,8 @@ export function Ingest() {
                     <TableCell className="font-mono text-xs">{names.get(b.entity_id) ?? b.entity_id.slice(0, 8)}</TableCell>
                     <TableCell className="font-mono text-xs tabular-nums">{b.period.slice(0, 7)}</TableCell>
                     <TableCell>
-                      <Badge className={cn("rounded-full font-mono text-[10px] uppercase tracking-wider", statusTone(b.status))}>
-                        {b.status}
+                      <Badge className={cn("rounded-full font-mono text-[10px] uppercase tracking-wider", statusTone(b.status))} title={b.status}>
+                        {statusLabel(b.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono text-[11px] text-muted-foreground">
@@ -212,6 +240,68 @@ export function Ingest() {
         )}
       </section>
     </div>
+  )
+}
+
+const TEMPLATE_CSV =
+  "account_code,txn_date,debit,credit,currency,description\n" +
+  "4000,2026-06-20,0,13000,EUR,Product sales\n" +
+  "6000,2026-06-25,14400,0,EUR,Salaries\n" +
+  "6200,2026-06-12,1350,0,EUR,Utilities\n"
+
+const GUIDE_COLS: { col: string; desc: string }[] = [
+  { col: "account_code", desc: "Account number from your chart (e.g. 4000 sales, 6000 salaries)." },
+  { col: "txn_date", desc: "Date of the entry — YYYY-MM-DD (e.g. 2026-06-20)." },
+  { col: "debit / credit", desc: "The amount on ONE side; the other column is 0." },
+  { col: "currency", desc: "3-letter code, e.g. EUR." },
+  { col: "description", desc: "Optional note (e.g. \"May salaries\")." },
+]
+
+/** "What to upload" — a plain explanation of the expected file + a template. */
+function UploadGuide() {
+  function downloadTemplate() {
+    const blob = new Blob([TEMPLATE_CSV], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "ingest-template.csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <details className="mb-6 rounded-[1.5rem] border border-border bg-card/40 p-5 open:bg-card/60">
+      <summary className="cursor-pointer select-none font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        What file do I upload? <span className="text-accent">(click)</span>
+      </summary>
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            A CSV (spreadsheet saved as <code className="rounded bg-secondary px-1 py-0.5 text-foreground">.csv</code>)
+            with one row per accounting entry. Columns:
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {GUIDE_COLS.map((c) => (
+              <li key={c.col} className="text-sm leading-relaxed">
+                <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-foreground">{c.col}</code>
+                <span className="ml-2 text-muted-foreground">{c.desc}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Different column names? Upload anyway — after you pick the file you can
+            <span className="text-foreground"> map your columns</span> to these.
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-border bg-background/40 p-4">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Example</span>
+          <pre className="w-full overflow-x-auto rounded-lg bg-background p-3 font-mono text-[11px] leading-relaxed text-foreground/80">{TEMPLATE_CSV}</pre>
+          <button type="button" onClick={downloadTemplate}
+            className="rounded-md bg-accent px-4 py-2 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110">
+            Download template
+          </button>
+        </div>
+      </div>
+    </details>
   )
 }
 

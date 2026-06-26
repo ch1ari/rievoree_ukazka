@@ -42,6 +42,9 @@ export function useBatches() {
  *   1) ingest-submit `create`  → signed upload URL (server owns the path)
  *   2) Storage uploadToSignedUrl → the file bytes go straight to Storage
  *   3) ingest-submit `finalize` → server hashes + calls submit_batch (the gate)
+ *   4) process_uploaded_rows     → stage the client-parsed rows + run the real
+ *      transform/z-score so the batch reaches awaiting_review with no worker.
+ *      (Pass `rows` for CSV; omit for XLSX, which still needs the worker.)
  */
 export function useUploadBatch() {
   const qc = useQueryClient()
@@ -50,6 +53,7 @@ export function useUploadBatch() {
       entityId: string
       period: string
       file: File
+      rows?: unknown[] | null
     }) => {
       const fileName = args.file.name
 
@@ -78,7 +82,17 @@ export function useUploadBatch() {
         },
       })
       if (finalized.error) throw new Error(await humanize(finalized.error))
-      return finalized.data as { status?: string; batch_id?: string }
+      const result = finalized.data as { status?: string; batch_id?: string }
+
+      // Stage + validate + z-score the parsed rows right away (no worker needed).
+      if (result?.batch_id && result.status !== "duplicate" && args.rows && args.rows.length) {
+        const { error } = await supabase.rpc("process_uploaded_rows", {
+          p_batch_id: result.batch_id,
+          p_rows: args.rows,
+        })
+        if (error) throw new Error(error.message)
+      }
+      return result
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["ingest_batches"] })
