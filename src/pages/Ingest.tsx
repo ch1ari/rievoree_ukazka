@@ -22,6 +22,7 @@ import { parseCsvToRows } from "@/lib/data/parseCsv"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 import { IngestRules } from "@/components/IngestRules"
 import { IngestMapping } from "@/components/IngestMapping"
+import { BatchDetail } from "@/components/BatchDetail"
 
 function canManage(role: string | null) {
   return role === "manager" || role === "admin" || role === "super_admin"
@@ -61,11 +62,13 @@ export function Ingest() {
   const [period, setPeriod] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [mapping, setMapping] = useState<Record<string, string[]> | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const eff = useEntityRuleset(entityId || undefined)
   const saveRules = useSaveRuleset(entityId || undefined)
 
   const names = new Map((entities ?? []).map((e) => [e.id, e.name]))
+  const selected = (batches.data ?? []).find((b) => b.id === selectedId) ?? null
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -203,8 +206,8 @@ export function Ingest() {
               </TableHeader>
               <TableBody>
                 {batches.data!.map((b) => (
-                  <TableRow key={b.id}>
-                    <TableCell className="max-w-40 truncate font-mono text-xs">{b.file_name}</TableCell>
+                  <TableRow key={b.id} className={cn("cursor-pointer transition-colors hover:bg-foreground/[0.03]", selectedId === b.id && "bg-foreground/[0.04]")} onClick={() => setSelectedId((cur) => (cur === b.id ? null : b.id))}>
+                    <TableCell className="max-w-40 truncate font-mono text-xs underline-offset-4 hover:underline">{b.file_name}</TableCell>
                     <TableCell className="font-mono text-xs">{names.get(b.entity_id) ?? b.entity_id.slice(0, 8)}</TableCell>
                     <TableCell className="font-mono text-xs tabular-nums">{b.period.slice(0, 7)}</TableCell>
                     <TableCell>
@@ -221,7 +224,7 @@ export function Ingest() {
                           size="xs"
                           className="font-mono text-[10px]"
                           disabled={approve.isPending}
-                          onClick={() => approve.mutate(b.id)}
+                          onClick={(e) => { e.stopPropagation(); approve.mutate(b.id) }}
                         >
                           {approve.isPending ? "…" : "Approve"}
                         </Button>
@@ -237,6 +240,20 @@ export function Ingest() {
           <p role="alert" className="mt-3 font-mono text-xs text-destructive">
             Approve failed: {approve.error.message}
           </p>
+        )}
+
+        {/* Click a batch to see why each row will / won't load + the balance check. */}
+        {selected && (
+          <BatchDetail
+            batchId={selected.id}
+            fileName={selected.file_name}
+            period={selected.period}
+            status={selected.status}
+            canApprove={canManage(role)}
+            approving={approve.isPending}
+            onApprove={() => approve.mutate(selected.id)}
+            onClose={() => setSelectedId(null)}
+          />
         )}
       </section>
     </div>
