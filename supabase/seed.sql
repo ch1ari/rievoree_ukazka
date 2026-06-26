@@ -168,7 +168,7 @@ from public.entities e;
 -- Per-(entity, month) financial model: actual revenue/costs, the no-noise plan
 -- (for budgets), opening capital/inventory, and prior-month figures (cash
 -- collections/payments lag one month → realistic A/R and A/P balances).
-create temp table seed_calc as
+create table seed_calc as
 with ent(id, slug, f) as (
   select id, slug, (case slug when 'acme' then 1.6 when 'globex' then 1.0
                               when 'initech' then 0.7 else 0.45 end)::numeric
