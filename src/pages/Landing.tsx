@@ -1,24 +1,17 @@
 import { useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { motion } from "motion/react"
-import { Workflow, ShieldCheck, ScanLine } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { OrbsBackground } from "@/components/OrbsBackground"
 import { XrayScan } from "@/components/XrayScan"
-import { HeroXray } from "@/components/HeroXray"
+import { PageTear } from "@/components/PageTear"
+import { useXray } from "@/components/XrayContext"
+import { CountUp } from "@/components/CountUp"
+import { Showcase } from "@/components/Showcase"
 
 // TODO(mariia): replace with your real links before deploy.
 const GITHUB_URL = "https://github.com/your-handle/xray-reporting-engine"
 const CV_URL = "https://your-portfolio.example/cv"
 
-const VALUE = [
-  { k: "Ingest, transformed", Icon: Workflow, tint: "from-accent to-cold",
-    d: "Spreadsheets land, get validated, z-score-screened for anomalies, then loaded — a Deno worker and Postgres do the real work. Nothing simulated." },
-  { k: "Isolated by row", Icon: ShieldCheck, tint: "from-signal to-accent",
-    d: "One query, different rows per role. Tenant isolation is enforced in the database with RLS — not patched on in the client." },
-  { k: "Observable, live", Icon: ScanLine, tint: "from-cold to-signal",
-    d: "An X-ray panel streams every call, pipeline event and policy as it fires. The backend runs in the open — no black boxes." },
-]
 const STACK = ["React 19", "TypeScript", "Vite", "Tailwind v4", "TanStack", "recharts", "Supabase", "Postgres", "Edge / Deno", "Docker", "pg_cron", "pg_net", "RLS"]
 const ARCH = [
   { layer: "Browser", detail: "React 19 reaches Postgres through one instrumented fetch — the seam the X-ray panel taps.", tag: "instrumentedFetch.ts" },
@@ -32,9 +25,17 @@ const TABS = [
   { k: "RLS", d: "The same query, run as three identities — different rows each time.", line: "admin 42 rows · manager 12 · viewer 0" },
 ]
 
-const HEADLINE = ["See", "the", "machinery"]
 const SUBLINE =
   "A financial reporting engine: messy spreadsheets in, validated and anomaly-screened reports out. Built backend-first — row-level security, a real ETL pipeline and scheduled jobs — and you can watch every layer work."
+
+// Big hero numbers — REAL figures from the demo dataset (seeded sandbox). No
+// invented statistics: if it isn't a real figure, it isn't here.
+const STATS: { value: number; label: string; format?: (n: number) => string; accent?: boolean }[] = [
+  { value: 3_058_957, format: (n) => `€${(n / 1e6).toFixed(2)}M`, label: "processed · total debit", accent: true },
+  { value: 936, label: "account-months" },
+  { value: 4, label: "entities · RLS-scoped" },
+  { value: 18, label: "monthly periods" },
+]
 
 export function Landing() {
   const navigate = useNavigate()
@@ -58,105 +59,113 @@ export function Landing() {
   }
 
   return (
-    <div className="-mx-6 -my-16">
-      <OrbsBackground />
-
+    <div>
       <XrayScan>
-      {/* 1 — Hero: wide two-column. Left = pitch, right = LIVE x-ray window. */}
-      <section className="px-6 pb-16 pt-16 md:px-12 md:pt-20 lg:px-16">
-        <div className="mx-auto grid max-w-[1600px] items-center gap-12 lg:grid-cols-[5fr_6fr] lg:gap-16">
-          {/* Left — pitch */}
-          <div className="max-w-2xl">
-            <motion.span initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-              className="inline-flex items-center gap-2 rounded-full bg-card/85 px-4 py-1.5 text-sm font-medium text-accent shadow-soft ring-1 ring-border backdrop-blur">
-              <span className="size-2 animate-pulse rounded-full bg-accent" /> Financial reporting engine
-            </motion.span>
+      {/* 1 — Hero: bold dark editorial. Oversized square headline + pitch + CTAs
+          anchored LEFT; RIGHT holds a fixed, quietly pulsing rip in the freed
+          space, exposing the real machinery. Big REAL numbers sit below. */}
+      <section className="overflow-x-clip px-6 pb-20 pt-14 md:px-12 md:pt-20 lg:px-16">
+        <div className="mx-auto max-w-[2400px]">
+          {/* Split hero — headline + pitch + CTA LEFT; a torn hole in the paper
+              RIGHT, filling the freed space and exposing the dark machinery. */}
+          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+            <div className="min-w-0 max-w-2xl">
+              {/* #region xray */}
+              <h1 className="display uppercase text-foreground">
+                <span className="block overflow-hidden pb-[0.06em]">
+                  <motion.span className="block text-[clamp(1.25rem,3.2vw,2.75rem)]" initial={{ y: "120%" }} animate={{ y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.05, ease: [0.22, 0.7, 0.2, 1] }}>
+                    See the
+                  </motion.span>
+                </span>
+                <span className="block overflow-hidden pb-[0.04em]">
+                  {/* Per-letter reveal — each glyph slides up on load (masked by the
+                      overflow-hidden line). reducedMotion="user" disables it. */}
+                  <span className="stencil ignite block text-[clamp(2.25rem,8.5vw,9rem)] leading-[0.85] text-accent" aria-label="Machinery">
+                    {"Machinery".split("").map((ch, i) => (
+                      <motion.span key={i} className="inline-block" aria-hidden initial={{ y: "120%" }} animate={{ y: 0 }}
+                        transition={{ duration: 0.7, delay: 0.18 + i * 0.045, ease: [0.22, 0.7, 0.2, 1] }}>
+                        {ch}
+                      </motion.span>
+                    ))}
+                  </span>
+                </span>
+                <span className="block overflow-hidden pb-[0.08em]">
+                  <motion.span className="block text-[clamp(1.4rem,4.5vw,4rem)]" initial={{ y: "120%" }} animate={{ y: 0 }}
+                    transition={{ duration: 0.6, delay: 0.34, ease: [0.22, 0.7, 0.2, 1] }}>
+                    of your finance
+                  </motion.span>
+                </span>
+              </h1>
+              {/* #endregion */}
 
-            {/* Full animated gradient headline — word reveal + shimmer on "machinery." */}
-            {/* #region xray */}
-            <h1 className="mt-6 flex flex-wrap gap-x-4 text-5xl font-semibold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl xl:text-8xl">
-              {HEADLINE.map((w, i) => (
-                <motion.span key={w}
-                  initial={{ opacity: 0, y: 28, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  transition={{ duration: 0.6, delay: 0.1 + i * 0.12, ease: "easeOut" }}
-                  className={i === HEADLINE.length - 1
-                    ? "animate-shimmer bg-[linear-gradient(110deg,var(--color-accent),35%,var(--color-cold),50%,var(--color-signal),70%,var(--color-accent))] bg-[length:200%_100%] bg-clip-text text-transparent"
-                    : ""}>
-                  {w}{i === HEADLINE.length - 1 ? "." : ""}
-                </motion.span>
-              ))}
-            </h1>
-            {/* #endregion */}
+              <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }}
+                className="mt-4 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                {SUBLINE}
+              </motion.p>
 
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-foreground/75">
-              {SUBLINE.split(" ").map((w, i) => (
-                <motion.span key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, delay: 0.5 + i * 0.022 }}>{w}{" "}</motion.span>
-              ))}
-            </p>
+              <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7, duration: 0.5 }}
+                className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <button onClick={exploreDemo} disabled={exploring}
+                  className="rounded-md bg-accent px-8 py-4 font-mono text-sm font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110 disabled:opacity-60">
+                  {exploring ? "Entering…" : "Explore the demo"}
+                </button>
+                <Link to="/register"
+                  className="rounded-md border border-border px-8 py-4 text-center font-mono text-sm font-bold uppercase tracking-widest text-foreground transition hover:border-accent hover:text-accent">
+                  Sign up
+                </Link>
+              </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0, duration: 0.5 }}
-              className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <button onClick={exploreDemo} disabled={exploring} className="rounded-full bg-accent px-8 py-4 text-base font-semibold text-accent-foreground shadow-soft transition hover:scale-[1.03] disabled:opacity-60">
-                {exploring ? "Entering…" : "Explore the demo"}
-              </button>
-              <Link to="/login" className="rounded-full bg-card px-8 py-4 text-center text-base font-semibold text-foreground shadow-soft ring-1 ring-border transition hover:ring-accent/40">
-                Sign up
-              </Link>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
+                className="mt-5 max-w-md font-mono text-xs leading-relaxed text-muted-foreground">
+                <span className="text-signal">Read-only sandbox</span> — nothing you do is saved. The torn hole beside this breathes live source — an RLS policy, the report view, the worker beneath. <span className="text-foreground">Click it to x-ray the page.</span>
+              </motion.p>
+            </div>
+
+            {/* RIGHT — a torn hole in the paper; the dark machinery glows through.
+                The whole hole is CLICKABLE → toggles the full-page X-ray reveal. */}
+            <motion.div className="min-w-0" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}>
+              <PageTear />
             </motion.div>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="mt-4 max-w-md text-sm text-foreground/65">
-              <span className="rounded-full bg-signal/15 px-2 py-0.5 font-medium text-signal">Read-only sandbox</span>{" "}
-              — nothing you do is saved. Jump into the demo, or see how it's built in the panel on the right.
-            </motion.p>
           </div>
 
-          {/* Right — live x-ray window (the star). */}
-          <motion.div initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.35, ease: "easeOut" }}>
-            <HeroXray />
-          </motion.div>
-        </div>
-      </section>
-
-      <div className="mx-auto max-w-[1600px] space-y-28 px-6 py-24 md:space-y-36 md:px-12 md:py-28 lg:px-16">
-        {/* 2 — What it does */}
-        <section>
-          <SectionHead eyebrow="What it does" title="Three things, done at the data layer." />
-          <div className="mt-12 grid gap-6 md:grid-cols-3 lg:gap-8">
-            {VALUE.map((v, i) => (
-              <motion.div key={v.k}
-                initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.55, delay: i * 0.12, ease: "easeOut" }} whileHover={{ y: -8 }}
-                className="group relative overflow-hidden rounded-[1.75rem] bg-card p-8 shadow-soft ring-1 ring-border lg:p-9">
-                <div className={`pointer-events-none absolute -right-12 -top-12 size-40 rounded-full bg-gradient-to-br ${v.tint} opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-45`} />
-                <div className={`relative inline-flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br ${v.tint} text-white shadow-soft transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110`}>
-                  <v.Icon className="size-7" strokeWidth={2.25} />
+          {/* Big real numbers — the demo dataset, count-up on load. */}
+          <div className="mt-16 grid grid-cols-2 border-t border-border md:mt-24 md:grid-cols-4">
+            {STATS.map((s, i) => (
+              <motion.div key={s.label}
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
+                className="border-b border-border py-7 pr-4 md:border-b-0 md:border-l md:px-8 md:first:border-l-0 md:first:pl-0">
+                <div className={`display text-5xl md:text-6xl lg:text-7xl ${s.accent ? "text-accent glow-accent" : "text-foreground"}`}>
+                  <CountUp value={s.value} format={s.format} delay={0.5 + i * 0.1} />
                 </div>
-                <div className="relative mt-6 flex items-baseline gap-2.5">
-                  <span className="font-mono text-sm text-accent">0{i + 1}</span>
-                  <h3 className="text-xl font-semibold lg:text-2xl">{v.k}</h3>
-                </div>
-                <p className="relative mt-3 text-[15px] leading-relaxed text-muted-foreground">{v.d}</p>
+                <div className="mt-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{s.label}</div>
               </motion.div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-[2400px] space-y-28 px-6 py-24 md:space-y-36 md:px-12 md:py-28 lg:px-16">
+        {/* 2 — What it does: product-screenshot timeline (Showcase) */}
+        <Showcase />
 
         {/* 3 — Architecture: a request, assembled down the stack on scroll */}
         <section>
           <SectionHead eyebrow="Architecture" title="Follow one request down the stack."
             intro="Four layers, each doing real work. Scroll to assemble them — then x-ray any page in the demo to watch a request actually cross them." />
-          <div className="mt-12 lg:mx-auto lg:max-w-5xl">
+          <div className="mt-12">
             {ARCH.map((a, i) => (
               <motion.div key={a.layer}
                 initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}>
-                <div className="group flex flex-col gap-4 rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border transition-colors hover:bg-secondary lg:flex-row lg:items-center lg:gap-8 lg:p-7">
+                <div className="group flex flex-col gap-4 rounded-[1.5rem] border border-border p-6 transition-colors hover:border-foreground/45 hover:bg-foreground/[0.04] lg:flex-row lg:items-center lg:gap-8 lg:p-7">
                   <div className="flex items-center gap-4 lg:w-64 lg:shrink-0">
-                    <span className="font-mono text-sm text-accent transition-transform group-hover:scale-125">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-sm text-foreground/55 transition-transform group-hover:scale-125">{String(i + 1).padStart(2, "0")}</span>
                     <span className="text-lg font-semibold lg:text-xl">{a.layer}</span>
                   </div>
                   <p className="flex-1 text-sm leading-relaxed text-muted-foreground">{a.detail}</p>
-                  <span className="shrink-0 self-start rounded-full bg-secondary px-3 py-1.5 font-mono text-xs text-foreground/70 ring-1 ring-border transition-colors group-hover:bg-card lg:self-auto">{a.tag}</span>
+                  <span className="shrink-0 self-start rounded-full border border-border px-3 py-1.5 font-mono text-xs text-foreground/70 transition-colors group-hover:border-foreground/45 lg:self-auto">{a.tag}</span>
                 </div>
                 {i < ARCH.length - 1 && (
                   <div className="ml-9 flex h-9 items-center lg:ml-[2.1rem]">
@@ -167,9 +176,9 @@ export function Landing() {
               </motion.div>
             ))}
           </div>
-          <div className="mt-10 flex flex-wrap justify-center gap-2 lg:mx-auto lg:max-w-5xl">
+          <div className="mt-10 flex flex-wrap justify-center gap-2">
             {STACK.map((s) => (
-              <span key={s} className="rounded-full bg-secondary px-3 py-1.5 font-mono text-xs text-muted-foreground ring-1 ring-border transition-colors hover:bg-accent hover:text-accent-foreground hover:ring-accent">{s}</span>
+              <span key={s} className="rounded-full border border-border px-3 py-1.5 font-mono text-xs text-foreground/75 transition-colors hover:border-foreground hover:bg-foreground hover:text-background">{s}</span>
             ))}
           </div>
         </section>
@@ -180,24 +189,21 @@ export function Landing() {
             intro="Every page in the demo carries a live console — the same seam, three lenses on what just ran." />
           <Reveal className="mt-12">
             <motion.div whileHover={{ y: -4 }}
-              className="overflow-hidden rounded-[1.75rem] bg-[#1e1e1e] shadow-soft ring-1 ring-white/10">
-              <div className="flex items-center gap-2 border-b border-white/10 px-6 py-4 font-mono text-xs text-white/55">
-                <span className="size-2 animate-pulse rounded-full bg-accent" /> X-ray panel · live on every page in the demo
+              className="overflow-hidden rounded-[1.75rem] border border-border">
+              <div className="flex items-center gap-2 border-b border-border px-6 py-4 font-mono text-xs text-muted-foreground">
+                <span className="size-2 animate-pulse rounded-full bg-foreground" /> X-ray panel · live on every page in the demo
               </div>
-              <div className="grid gap-px bg-white/10 md:grid-cols-3">
+              <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
                 {TABS.map((t) => (
-                  <div key={t.k} className="bg-[#1e1e1e] p-7 transition-colors hover:bg-white/[0.04]">
-                    <div className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">{t.k}</div>
-                    <p className="mt-3 text-sm leading-relaxed text-white/60">{t.d}</p>
-                    <div className="mt-5 truncate rounded-xl bg-white/[0.05] px-3 py-2.5 font-mono text-[11px] text-white/45">{t.line}</div>
+                  <div key={t.k} className="p-7 transition-colors hover:bg-foreground/[0.04]">
+                    <div className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">{t.k}</div>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t.d}</p>
+                    <div className="mt-5 truncate rounded-xl border border-border px-3 py-2.5 font-mono text-[11px] text-foreground/65">{t.line}</div>
                   </div>
                 ))}
               </div>
-              <div className="px-6 py-6">
-                <button onClick={exploreDemo} disabled={exploring}
-                  className="rounded-full bg-accent px-7 py-3.5 text-sm font-semibold text-accent-foreground transition hover:scale-[1.03] disabled:opacity-60">
-                  {exploring ? "Entering…" : "See it live →"}
-                </button>
+              <div className="border-t border-border px-6 py-6">
+                <PanelXrayButton />
               </div>
             </motion.div>
           </Reveal>
@@ -214,21 +220,21 @@ export function Landing() {
               <button onClick={exploreDemo} disabled={exploring} className="rounded-full bg-accent px-8 py-4 text-base font-semibold text-accent-foreground shadow-soft transition hover:scale-[1.03] disabled:opacity-60">
                 {exploring ? "Entering…" : "Explore the demo"}
               </button>
-              <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="rounded-full bg-card px-8 py-4 text-center text-base font-semibold text-foreground shadow-soft ring-1 ring-border transition hover:ring-accent/40">
+              <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="rounded-full border border-border px-8 py-4 text-center text-base font-semibold text-foreground transition hover:border-foreground/55 hover:bg-foreground/[0.04]">
                 Read the source ↗
               </a>
             </div>
           </Reveal>
 
           <Reveal>
-            <div className="rounded-[1.75rem] bg-card p-8 shadow-soft ring-1 ring-border">
+            <div className="rounded-[1.75rem] border border-border p-8">
               <h3 className="text-xl font-semibold">Keep me posted <span className="text-muted-foreground">(optional)</span></h3>
               {sent ? (
-                <p className="mt-3 font-medium text-signal">Thanks — noted.</p>
+                <p className="mt-3 font-medium text-foreground">Thanks — noted.</p>
               ) : (
                 <form onSubmit={submitEmail} className="mt-4 flex flex-col gap-3 sm:flex-row">
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
-                    className="flex-1 rounded-full bg-background px-5 py-3 text-sm ring-1 ring-border outline-none transition focus:ring-2 focus:ring-accent/50" />
+                    className="flex-1 rounded-full border border-border bg-foreground/[0.04] px-5 py-3 text-sm text-foreground placeholder:text-foreground/40 outline-none transition focus:border-foreground/60" />
                   <button type="submit" className="rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition hover:scale-[1.03]">Notify me</button>
                 </form>
               )}
@@ -246,6 +252,19 @@ export function Landing() {
       </div>
       </XrayScan>
     </div>
+  )
+}
+
+/** Fires the full-page X-ray editor (the in-place VS Code reveal of this page's
+ *  own source). Lives here, inside <XrayScan>, so it reads the shared toggle —
+ *  it's the entry point the deleted hero "X-ray this page" button used to be. */
+function PanelXrayButton() {
+  const { toggle } = useXray()
+  return (
+    <button onClick={toggle}
+      className="rounded-full bg-accent px-7 py-3.5 text-sm font-semibold text-accent-foreground transition hover:scale-[1.03]">
+      X-ray this page →
+    </button>
   )
 }
 

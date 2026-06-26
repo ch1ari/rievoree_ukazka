@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react"
 import { animate } from "motion/react"
-import { ScanLine } from "lucide-react"
+import { X } from "lucide-react"
 import { XrayContext } from "@/components/XrayContext"
 
 /**
@@ -82,15 +82,17 @@ export function XrayScan({ children }: { children: ReactNode }) {
       {/* Scan line riding the reveal edge. */}
       <div aria-hidden className="xray-scanline" />
 
-      {/* Toggle — tap/click, mobile + desktop. */}
-      <button
-        onClick={toggle}
-        aria-pressed={on}
-        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-foreground px-5 py-3 font-mono text-xs font-semibold uppercase tracking-wider text-background shadow-soft transition hover:scale-[1.04] md:bottom-7 md:right-7"
-      >
-        <ScanLine className="size-4" strokeWidth={2.25} />
-        {on ? "Exit x-ray" : "X-ray this page"}
-      </button>
+      {/* Exit control — only while x-rayed; entry lives on the hero panel button. */}
+      {on && (
+        <button
+          onClick={toggle}
+          aria-pressed={on}
+          className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-md border border-accent bg-background/80 px-5 py-3 font-mono text-xs font-bold uppercase tracking-widest text-accent backdrop-blur transition hover:bg-accent hover:text-accent-foreground md:bottom-7 md:right-7"
+        >
+          <X className="size-4" strokeWidth={2.5} />
+          Exit x-ray
+        </button>
+      )}
     </div>
     </XrayContext.Provider>
   )

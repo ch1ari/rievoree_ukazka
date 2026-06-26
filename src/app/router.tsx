@@ -10,7 +10,14 @@ import { Dashboard } from "@/pages/Dashboard"
 import { Ingest } from "@/pages/Ingest"
 import { Landing } from "@/pages/Landing"
 import { Login } from "@/pages/Login"
+import { Register } from "@/pages/Register"
+import { About } from "@/pages/About"
 import { Reports } from "@/pages/Reports"
+import { Pl } from "@/pages/Pl"
+import { Balance } from "@/pages/Balance"
+import { Pivot } from "@/pages/Pivot"
+import { Variance } from "@/pages/Variance"
+import { Aging } from "@/pages/Aging"
 import { Users } from "@/pages/Users"
 
 /**
@@ -30,9 +37,16 @@ const routes = [
       redirect: typeof search.redirect === "string" ? search.redirect : undefined,
     }),
   }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/register", component: Register }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About }),
   createRoute({ getParentRoute: () => rootRoute, path: "/dashboard", component: Dashboard }),
   createRoute({ getParentRoute: () => rootRoute, path: "/ingest", component: Ingest }),
   createRoute({ getParentRoute: () => rootRoute, path: "/reports", component: Reports }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/pl", component: Pl }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/balance", component: Balance }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/pivot", component: Pivot }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/variance", component: Variance }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/aging", component: Aging }),
   createRoute({ getParentRoute: () => rootRoute, path: "/connectors", component: Connectors }),
   createRoute({ getParentRoute: () => rootRoute, path: "/users", component: Users }),
   createRoute({ getParentRoute: () => rootRoute, path: "/account", component: Account }),

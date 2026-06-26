@@ -1,38 +1,71 @@
 import { useState } from "react"
-import { Link, Navigate, Outlet, useRouterState } from "@tanstack/react-router"
-import { Menu } from "lucide-react"
+import { Link, Navigate, Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
+import { Menu, ScanLine } from "lucide-react"
 import { XRayPanel } from "@/components/xray/XRayPanel"
 import { OrbsBackground } from "@/components/OrbsBackground"
+import { PaperBackground } from "@/components/PaperBackground"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { useAuth } from "@/lib/auth/useAuth"
 import { supabase } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
 const navLinkBase = "rounded-full px-3.5 py-2 font-mono text-xs uppercase tracking-widest transition-colors"
 const navLinkActive = "bg-accent/12 text-accent"
 const navLinkIdle = "text-muted-foreground hover:bg-secondary hover:text-foreground"
 
+const DEMO_EMAIL = "demo@demo.local"
+
+// Full product nav — only for a real signed-in account (not the demo tour).
 const NAV = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/ingest", label: "Ingest" },
+  { to: "/pl", label: "P&L" },
+  { to: "/balance", label: "Balance" },
+  { to: "/pivot", label: "Pivot" },
+  { to: "/variance", label: "Variance" },
+  { to: "/aging", label: "Aging" },
   { to: "/reports", label: "Reports" },
+  { to: "/ingest", label: "Ingest" },
   { to: "/connectors", label: "Connectors" },
   { to: "/users", label: "Users" },
   { to: "/account", label: "Account" },
 ] as const
 
-// Routes reachable without a session. Everything else is guarded.
-const PUBLIC = new Set(["/", "/login"])
+// Demo "tour" nav — read-only analytics only. NO Ingest / Users / Account.
+const SHOWCASE = [
+  { to: "/dashboard", label: "Overview" },
+  { to: "/pl", label: "P&L" },
+  { to: "/balance", label: "Balance" },
+  { to: "/pivot", label: "Pivot" },
+  { to: "/variance", label: "Variance" },
+  { to: "/aging", label: "Aging" },
+  { to: "/reports", label: "Reports" },
+] as const
 
-/**
- * App frame + auth guard. The guard waits for `loading` (session rehydration
- * from localStorage) BEFORE deciding — so a page refresh while signed in never
- * flashes a redirect to /login. Anon on a protected route is bounced to /login
- * with a `redirect` back to where they were headed.
- */
+// Routes the demo tour must not reach (write / account features → sign in first).
+const DEMO_BLOCKED = new Set(["/ingest", "/users", "/connectors", "/account"])
+
+const PUBLIC = new Set(["/", "/login", "/register", "/about"])
+const PAPER_ROUTES = new Set(["/", "/login", "/register", "/about"])
+
 export function AppShell() {
   const { session, role, loading } = useAuth()
+  const navigate = useNavigate()
   const path = useRouterState({ select: (s) => s.location.pathname })
+  const onPaper = PAPER_ROUTES.has(path)
+  // The demo is a READ-ONLY TOUR, not a real login. We still ride the seeded
+  // viewer session under the hood (so the data + X-ray are real + RLS-filtered),
+  // but the UI never frames it as "logged in" and hides every write feature.
+  const isDemo = !!session && session.user.email === DEMO_EMAIL
+
+  async function exploreDemo() {
+    const { error } = await supabase.auth.signInWithPassword({ email: DEMO_EMAIL, password: "demo123456" })
+    if (!error) navigate({ to: "/dashboard" })
+  }
+  async function exitDemo() {
+    await supabase.auth.signOut()
+    navigate({ to: "/" })
+  }
 
   if (loading) {
     return (
@@ -44,57 +77,98 @@ export function AppShell() {
     )
   }
 
-  // Login screen renders bare — no app nav/chrome.
-  if (path === "/login") return <Outlet />
-
-  // Guard: anon hitting a protected route → login, remembering the destination.
+  // Guard: anon on a protected route → login.
   if (!session && !PUBLIC.has(path)) {
     return <Navigate to="/login" search={{ redirect: path }} />
   }
+  // Guard: the demo tour cannot reach write/account routes — sign in first.
+  if (isDemo && DEMO_BLOCKED.has(path)) {
+    return <Navigate to="/dashboard" />
+  }
+
+  // The signed-in flag for chrome purposes EXCLUDES the demo tour.
+  const realUser = !!session && !isDemo
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Subtle cold-orb atmosphere behind in-app pages (landing brings its own). */}
-      {path !== "/" && <OrbsBackground subtle />}
+    <div className={cn("flex min-h-screen flex-col", onPaper && "paper")}>
+      {onPaper ? <PaperBackground /> : <OrbsBackground subtle />}
 
-      <header className="sticky top-0 z-40 border-b border-border bg-background/75 shadow-soft backdrop-blur-lg">
+      <header className={onPaper
+        ? "sticky top-0 z-40"
+        : "sticky top-0 z-40 border-b border-border bg-background/75 shadow-soft backdrop-blur-lg"}>
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
           <Link to="/" className="text-xl font-semibold tracking-tight">
-            X-RAY<span className="bg-gradient-to-r from-accent to-signal bg-clip-text text-transparent">/</span>
+            X-RAY<span className={onPaper ? "text-accent" : "bg-gradient-to-r from-accent to-signal bg-clip-text text-transparent"}>/</span>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex">
-            {session ? (
-              NAV.map((item) => (
-                <Link key={item.to} to={item.to} className={navLinkBase}
-                  activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
-                  {item.label}
-                </Link>
-              ))
-            ) : (
-              <Link to="/login" className={`${navLinkBase} ${navLinkIdle}`}>Sign in</Link>
-            )}
+            {realUser
+              ? NAV.map((item) => (
+                  <Link key={item.to} to={item.to} className={navLinkBase}
+                    activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
+                    {item.label}
+                  </Link>
+                ))
+              : isDemo
+              ? SHOWCASE.map((item) => (
+                  <Link key={item.to} to={item.to} className={navLinkBase}
+                    activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
+                    {item.label}
+                  </Link>
+                ))
+              : (
+                <>
+                  <button onClick={exploreDemo} className={`${navLinkBase} ${navLinkIdle}`}>Demo</button>
+                  <Link to="/about" className={navLinkBase}
+                    activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>O nás</Link>
+                  <Link to="/login" className={`${navLinkBase} ${navLinkIdle}`}>Prihlásiť</Link>
+                </>
+              )}
           </nav>
 
-          {/* Right cluster — X-ray panel always reachable; nav collapses to a drawer on mobile */}
           <div className="flex items-center gap-2.5">
             <XRayPanel />
-            {session && <div className="hidden md:block"><ActingAs label={role ?? session.user.email ?? "signed in"} /></div>}
+            {realUser && <div className="hidden md:block"><ActingAs label={role ?? session.user.email ?? "signed in"} /></div>}
+            {isDemo && (
+              <div className="hidden items-center gap-2 md:flex">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground ring-1 ring-border">
+                  <ScanLine className="size-3" strokeWidth={2.25} /> Demo · read-only
+                </span>
+                <Link to="/register" className="rounded-full bg-accent px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110">
+                  Create account
+                </Link>
+                <button onClick={exitDemo} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">Exit</button>
+              </div>
+            )}
             <div className="md:hidden">
-              <MobileNav signedIn={!!session} identity={role ?? session?.user.email ?? "signed in"} />
+              <MobileNav mode={realUser ? "user" : isDemo ? "demo" : "anon"}
+                identity={role ?? session?.user.email ?? "signed in"} onDemo={exploreDemo} onExitDemo={exitDemo} />
             </div>
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto w-full max-w-6xl flex-1 px-6 py-16">
+      {/* Demo banner — makes the read-only-tour state unmistakable + nudges sign-up. */}
+      {isDemo && !onPaper && (
+        <div className="border-b border-accent/20 bg-accent/[0.07]">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-6 py-2.5 text-sm">
+            <span className="font-medium text-foreground">You're exploring the demo — read-only.</span>
+            <span className="text-muted-foreground">Sign in to upload your own data and use the interactive tools.</span>
+            <span className="ml-auto flex items-center gap-2">
+              <Link to="/register" className="rounded-full bg-accent px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110">Create account</Link>
+              <Link to="/login" className="rounded-full border border-border px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest text-foreground transition hover:border-accent">Sign in</Link>
+            </span>
+          </div>
+        </div>
+      )}
+
+      <main className={onPaper ? "relative w-full flex-1" : "relative mx-auto w-full max-w-6xl flex-1 px-6 py-16"}>
         <Outlet />
       </main>
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl items-center gap-2.5 px-6 py-8">
-          <span className="size-1.5 rounded-full bg-signal" />
+          <span className={`size-1.5 rounded-full ${onPaper ? "bg-foreground" : "bg-signal"}`} />
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Portfolio demo — fake data only</p>
         </div>
       </footer>
@@ -102,9 +176,7 @@ export function AppShell() {
   )
 }
 
-/** Mobile nav drawer — collapses the link row + identity below md. Reuses the
- *  same NAV targets and signOut; closes on navigation. Presentational only. */
-function MobileNav({ signedIn, identity }: { signedIn: boolean; identity: string }) {
+function MobileNav({ mode, identity, onDemo, onExitDemo }: { mode: "user" | "demo" | "anon"; identity: string; onDemo: () => void; onExitDemo: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -120,30 +192,47 @@ function MobileNav({ signedIn, identity }: { signedIn: boolean; identity: string
           </SheetTitle>
         </SheetHeader>
         <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
-          {signedIn ? (
-            NAV.map((item) => (
-              <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
-                className="rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest transition-colors"
-                activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
-                {item.label}
-              </Link>
-            ))
-          ) : (
-            <Link to="/login" onClick={() => setOpen(false)}
-              className={`rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest ${navLinkIdle}`}>
-              Sign in
+          {mode === "user" && NAV.map((item) => (
+            <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
+              className="rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest transition-colors"
+              activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
+              {item.label}
             </Link>
+          ))}
+          {mode === "demo" && (
+            <>
+              {SHOWCASE.map((item) => (
+                <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
+                  className="rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest transition-colors"
+                  activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
+                  {item.label}
+                </Link>
+              ))}
+              <Link to="/register" onClick={() => setOpen(false)} className={`rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest ${navLinkIdle}`}>Create account</Link>
+              <Link to="/login" onClick={() => setOpen(false)} className={`rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest ${navLinkIdle}`}>Sign in</Link>
+            </>
+          )}
+          {mode === "anon" && (
+            <>
+              <button onClick={() => { setOpen(false); onDemo() }} className={`rounded-xl px-4 py-3 text-left font-mono text-sm uppercase tracking-widest ${navLinkIdle}`}>Demo</button>
+              <Link to="/about" onClick={() => setOpen(false)} className={`rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest ${navLinkIdle}`}>O nás</Link>
+              <Link to="/login" onClick={() => setOpen(false)} className={`rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest ${navLinkIdle}`}>Prihlásiť</Link>
+            </>
           )}
         </nav>
-        {signedIn && (
+        {mode === "user" && (
           <div className="mt-auto flex items-center justify-between gap-2 border-t border-border px-4 py-4">
             <span className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-muted-foreground">
               <span className="size-1.5 rounded-full bg-signal" /> {identity}
             </span>
             <Button variant="ghost" size="xs" className="font-mono text-[10px] uppercase tracking-wider"
-              onClick={() => { setOpen(false); void supabase.auth.signOut() }}>
-              Sign out
-            </Button>
+              onClick={() => { setOpen(false); void supabase.auth.signOut() }}>Sign out</Button>
+          </div>
+        )}
+        {mode === "demo" && (
+          <div className="mt-auto border-t border-border px-4 py-4">
+            <Button variant="ghost" size="xs" className="font-mono text-[10px] uppercase tracking-wider"
+              onClick={() => { setOpen(false); onExitDemo() }}>Exit demo</Button>
           </div>
         )}
       </SheetContent>
@@ -151,8 +240,6 @@ function MobileNav({ signedIn, identity }: { signedIn: boolean; identity: string
   )
 }
 
-/** Current identity + sign-out. signOut flows through onAuthStateChange, so the
- *  guard re-evaluates and bounces to /login if on a protected page. */
 function ActingAs({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-1.5 rounded-full bg-card py-1 pr-1 pl-3 ring-1 ring-border">
@@ -160,14 +247,8 @@ function ActingAs({ label }: { label: string }) {
         <span className="size-1.5 rounded-full bg-signal" />
         {label}
       </span>
-      <Button
-        variant="ghost"
-        size="xs"
-        className="rounded-full font-mono text-[10px] uppercase tracking-wider"
-        onClick={() => void supabase.auth.signOut()}
-      >
-        Sign out
-      </Button>
+      <Button variant="ghost" size="xs" className="rounded-full font-mono text-[10px] uppercase tracking-wider"
+        onClick={() => void supabase.auth.signOut()}>Sign out</Button>
     </div>
   )
 }

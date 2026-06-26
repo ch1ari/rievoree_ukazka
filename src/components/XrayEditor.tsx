@@ -15,7 +15,7 @@ import { extractRegions, highlightCode, type XrayLang } from "@/lib/code-xray"
  * using the genuine VS Code Dark+ grammar + theme, lazy-loaded.
  */
 import landingSrc from "@/pages/Landing.tsx?raw"
-import heroSrc from "@/components/HeroXray.tsx?raw"
+import tearSrc from "@/components/PageTear.tsx?raw"
 import scanSrc from "@/components/XrayScan.tsx?raw"
 import cssSrc from "@/index.css?raw"
 
@@ -23,7 +23,7 @@ interface FileTab { dir: string; name: string; lang: XrayLang; code: string }
 
 const FILES: FileTab[] = [
   { dir: "src/pages", name: "Landing.tsx", lang: "tsx", code: extractRegions(landingSrc) },
-  { dir: "src/components", name: "HeroXray.tsx", lang: "tsx", code: extractRegions(heroSrc) },
+  { dir: "src/components", name: "PageTear.tsx", lang: "tsx", code: extractRegions(tearSrc) },
   { dir: "src/components", name: "XrayScan.tsx", lang: "tsx", code: extractRegions(scanSrc) },
   { dir: "src", name: "index.css", lang: "css", code: extractRegions(cssSrc) },
 ]

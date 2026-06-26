@@ -1,23 +1,15 @@
 import { useMemo, useState } from "react"
 import { motion } from "motion/react"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { useReport } from "@/lib/data/useReport"
 import { useEntities } from "@/lib/data/useEntities"
+import { monthlyPnl, expenseByAccount } from "@/lib/data/aggregate"
+import { ChartCard, PnlTrend, ExpenseTreemap } from "@/components/charts/FinancialCharts"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 
-const eur = new Intl.NumberFormat("en-IE", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-})
-
+const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
 const selectClass =
   "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
@@ -27,30 +19,34 @@ export function Reports() {
   const [entityId, setEntityId] = useState("all")
   const [period, setPeriod] = useState("all")
 
-  const names = useMemo(
-    () => new Map((entities ?? []).map((e) => [e.id, e.name])),
-    [entities],
+  const names = useMemo(() => new Map((entities ?? []).map((e) => [e.id, e.name])), [entities])
+  const periods = useMemo(() => [...new Set((rows ?? []).map((r) => r.period))].sort().reverse(), [rows])
+
+  // Charts reflect the entity filter but ALL periods (so the trend is whole + clickable).
+  const entityRows = useMemo(
+    () => (rows ?? []).filter((r) => entityId === "all" || r.entity_id === entityId),
+    [rows, entityId],
   )
-  const periods = useMemo(
-    () => [...new Set((rows ?? []).map((r) => r.period))].sort().reverse(),
-    [rows],
-  )
+  const pnl = useMemo(() => monthlyPnl(entityRows), [entityRows])
+  const expenses = useMemo(() => expenseByAccount(entityRows), [entityRows])
+
+  // Table reflects entity + period.
   const filtered = useMemo(
-    () =>
-      (rows ?? []).filter(
-        (r) =>
-          (entityId === "all" || r.entity_id === entityId) &&
-          (period === "all" || r.period === period),
-      ),
-    [rows, entityId, period],
+    () => entityRows.filter((r) => period === "all" || r.period === period),
+    [entityRows, period],
   )
+
+  // Clicking a month on the trend sets the period filter (interactive drill-in).
+  function selectMonth(month: string) {
+    const match = periods.find((p) => p.slice(0, 7) === month)
+    if (match) setPeriod((cur) => (cur === match ? "all" : match))
+  }
 
   return (
     <div className="relative">
       <motion.header
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}
-        className="pb-10"
-      >
+        className="pb-10">
         <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Reports</h1>
         <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
           Per-account monthly roll-up from{" "}
@@ -59,63 +55,58 @@ export function Reports() {
         </p>
       </motion.header>
 
-      <div>
-        {isLoading ? (
-          <LoadingNote label="loading report…" />
-        ) : error ? (
-          <ErrorNote message={error.message} />
-        ) : (rows?.length ?? 0) === 0 ? (
-          <EmptyNote
-            title="No report data for your entities"
-            hint="Approve and load a batch on the Ingest page and figures will appear here."
-          />
-        ) : (
-          <>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Entity
-                <select
-                  className={selectClass}
-                  value={entityId}
-                  onChange={(e) => setEntityId(e.target.value)}
-                >
-                  <option value="all">All ({names.size})</option>
-                  {[...names.entries()].map(([id, name]) => (
-                    <option key={id} value={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Period
-                <select
-                  className={selectClass}
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                >
-                  <option value="all">All</option>
-                  {periods.map((p) => (
-                    <option key={p} value={p}>
-                      {p.slice(0, 7)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className="ml-auto rounded-full bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground ring-1 ring-border tabular-nums">
-                {filtered.length.toLocaleString("en")} rows
-              </span>
-            </div>
+      {isLoading ? (
+        <LoadingNote label="loading report…" />
+      ) : error ? (
+        <ErrorNote message={error.message} />
+      ) : (rows?.length ?? 0) === 0 ? (
+        <EmptyNote title="No report data for your entities"
+          hint="Approve and load a batch on the Ingest page and figures will appear here." />
+      ) : (
+        <div className="space-y-8">
+          {/* Charts */}
+          <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+            <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.45 }}>
+              <ChartCard title="Revenue vs expenses" hint="click a month to filter ↓">
+                <PnlTrend data={pnl} onSelectMonth={selectMonth} />
+              </ChartCard>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.45, delay: 0.08 }}>
+              <ChartCard title="Cost structure" hint="COGS + opex">
+                <ExpenseTreemap data={expenses} />
+              </ChartCard>
+            </motion.div>
+          </div>
 
-            {filtered.length === 0 ? (
-              <EmptyNote title="No rows match this filter" />
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.45, ease: "easeOut" }}
-                className="overflow-hidden rounded-[1.5rem] bg-card shadow-soft ring-1 ring-border"
-              >
-                <div className="max-h-[60vh] overflow-y-auto">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Entity
+              <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
+                <option value="all">All ({names.size})</option>
+                {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Period
+              <select className={selectClass} value={period} onChange={(e) => setPeriod(e.target.value)}>
+                <option value="all">All</option>
+                {periods.map((p) => <option key={p} value={p}>{p.slice(0, 7)}</option>)}
+              </select>
+            </label>
+            <span className="ml-auto rounded-full bg-secondary px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground ring-1 ring-border tabular-nums">
+              {filtered.length.toLocaleString("en")} rows
+            </span>
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyNote title="No rows match this filter" />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="overflow-hidden rounded-[1.5rem] bg-card shadow-soft ring-1 ring-border">
+              <div className="max-h-[60vh] overflow-y-auto">
                 <Table className="min-w-[720px]">
                   <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
@@ -144,12 +135,11 @@ export function Reports() {
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              </motion.div>
-            )}
-          </>
-        )}
-      </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

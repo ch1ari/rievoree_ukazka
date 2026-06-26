@@ -1,124 +1,119 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
 import { useReport } from "@/lib/data/useReport"
+import { useEntities } from "@/lib/data/useEntities"
+import { monthlyPnl, expenseByAccount, executiveSeries, executiveKpis, type Kpi } from "@/lib/data/aggregate"
+import { ChartCard, PnlTrend, ExpenseTreemap, RevenueMarginCombo, Sparkline, COLORS } from "@/components/charts/FinancialCharts"
+import { CountUp } from "@/components/CountUp"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 
-const eur = new Intl.NumberFormat("en-IE", {
-  style: "currency",
-  currency: "EUR",
-  maximumFractionDigits: 0,
-})
+const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
+const selectClass =
+  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 export function Dashboard() {
   const { data: rows, isLoading, error } = useReport()
+  const { data: entities } = useEntities()
+  const [entityId, setEntityId] = useState("all")
 
-  const kpi = useMemo(() => {
-    const r = rows ?? []
-    return {
-      entities: new Set(r.map((x) => x.entity_id)).size,
-      periods: new Set(r.map((x) => x.period)).size,
-      accountMonths: r.length,
-      debit: r.reduce((s, x) => s + Number(x.debit), 0),
-      credit: r.reduce((s, x) => s + Number(x.credit), 0),
-      net: r.reduce((s, x) => s + Number(x.net), 0),
-    }
-  }, [rows])
+  const names = useMemo(() => new Map((entities ?? []).map((e) => [e.id, e.name])), [entities])
+  const filtered = useMemo(() => (rows ?? []).filter((r) => entityId === "all" || r.entity_id === entityId), [rows, entityId])
 
-  const byType = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const x of rows ?? []) {
-      m.set(x.account_type, (m.get(x.account_type) ?? 0) + Number(x.net))
-    }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }, [rows])
+  const exec = useMemo(() => executiveSeries(filtered), [filtered])
+  const k = useMemo(() => executiveKpis(exec), [exec])
+  const combo = useMemo(() => exec.map((p) => ({ month: p.month, revenue: p.revenue, marginPct: p.marginPct })), [exec])
+  const pnl = useMemo(() => monthlyPnl(filtered), [filtered])
+  const expenses = useMemo(() => expenseByAccount(filtered), [filtered])
 
-  const kpis = [
-    { label: "Entities (RLS scope)", value: String(kpi.entities), accent: true },
-    { label: "Periods", value: String(kpi.periods) },
-    { label: "Account-months", value: kpi.accountMonths.toLocaleString("en") },
-    { label: "Net", value: eur.format(kpi.net) },
-    { label: "Total debit", value: eur.format(kpi.debit) },
-    { label: "Total credit", value: eur.format(kpi.credit) },
+  const cards: { label: string; kpi: Kpi; fmt: (n: number) => string; goodUp: boolean; color: string }[] = [
+    { label: "Revenue · last mo.", kpi: k.revenue, fmt: (n) => eur.format(n), goodUp: true, color: COLORS.emerald },
+    { label: "EBITDA · last mo.", kpi: k.ebitda, fmt: (n) => eur.format(n), goodUp: true, color: COLORS.emerald },
+    { label: "Cash position", kpi: k.cash, fmt: (n) => eur.format(n), goodUp: true, color: COLORS.teal },
+    { label: "DSO (days)", kpi: k.dso, fmt: (n) => `${Math.round(n)}d`, goodUp: false, color: COLORS.amber },
   ]
 
   return (
     <div className="relative">
       <motion.header
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: "easeOut" }}
-        className="pb-10"
-      >
-        <h1 className="text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Dashboard</h1>
+        className="pb-10">
+        <span className="font-mono text-xs font-semibold uppercase tracking-widest text-accent">Executive overview</span>
+        <h1 className="mt-3 text-5xl font-semibold tracking-tight md:text-6xl lg:text-7xl">Dashboard</h1>
         <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          Live figures for the entities your role can see — RLS-filtered at the
-          database. Inspect the query and policy in the X-ray panel.
+          The CFO snapshot — live, RLS-filtered figures for the entities your role can see.
+          Inspect the query and policy in the X-ray panel.
         </p>
       </motion.header>
 
-      <div>
-        {isLoading ? (
-          <LoadingNote label="loading report…" />
-        ) : error ? (
-          <ErrorNote message={error.message} />
-        ) : (rows?.length ?? 0) === 0 ? (
-          <EmptyNote
-            title="No report data for your entities"
-            hint="Once a batch is approved and loaded, figures appear here. Try the Ingest page."
-          />
-        ) : (
-          <div className="space-y-12">
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:gap-5">
-              {kpis.map((k, i) => (
-                <motion.div key={k.label}
-                  initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.4, delay: i * 0.06, ease: "easeOut" }}>
-                  <Kpi label={k.label} value={k.value} accent={k.accent} />
-                </motion.div>
-              ))}
+      {isLoading ? (
+        <LoadingNote label="loading report…" />
+      ) : error ? (
+        <ErrorNote message={error.message} />
+      ) : (rows?.length ?? 0) === 0 ? (
+        <EmptyNote title="No report data for your entities"
+          hint="Once a batch is approved and loaded, figures appear here." />
+      ) : (
+        <div className="space-y-8">
+          {names.size > 1 && (
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Entity
+                <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
+                  <option value="all">All ({names.size})</option>
+                  {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                </select>
+              </label>
             </div>
+          )}
 
-            <motion.section
-              initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.45, ease: "easeOut" }}>
-              <h2 className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Net by account type
-              </h2>
-              <div className="divide-y divide-border overflow-hidden rounded-[1.5rem] bg-card shadow-soft ring-1 ring-border">
-                {byType.map(([type, net]) => (
-                  <div key={type} className="flex items-baseline justify-between px-6 py-4 transition-colors hover:bg-secondary">
-                    <span className="flex items-center gap-2.5 text-sm capitalize">
-                      <span className={cn("size-1.5 rounded-full", net < 0 ? "bg-signal" : "bg-accent")} />
-                      {type}
-                    </span>
-                    <span className="font-mono text-sm tabular-nums">{eur.format(net)}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.section>
+          {/* KPI cards with sparkline + MoM delta */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+            {cards.map((c, i) => (
+              <motion.div key={c.label}
+                initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.06, ease: "easeOut" }}
+                className="rounded-2xl bg-card p-5 shadow-soft ring-1 ring-border">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{c.label}</span>
+                  <DeltaChip delta={c.kpi.delta} goodUp={c.goodUp} />
+                </div>
+                <div className="mt-2 text-2xl font-semibold tabular-nums lg:text-3xl">
+                  <CountUp value={c.kpi.value} format={c.fmt} delay={i * 0.06} />
+                </div>
+                <div className="mt-1.5 h-9"><Sparkline data={c.kpi.spark} color={c.color} /></div>
+              </motion.div>
+            ))}
           </div>
-        )}
-      </div>
+
+          {/* Combo: revenue bars + operating margin % line */}
+          <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.45 }}>
+            <ChartCard title="Revenue & operating margin" hint="18 months">
+              <RevenueMarginCombo data={combo} />
+            </ChartCard>
+          </motion.div>
+
+          {/* Revenue vs expenses + expense mix */}
+          <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+            <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.45 }}>
+              <ChartCard title="Revenue vs expenses" hint="€"><PnlTrend data={pnl} /></ChartCard>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }} transition={{ duration: 0.45, delay: 0.08 }}>
+              <ChartCard title="Cost structure" hint="COGS + opex"><ExpenseTreemap data={expenses} /></ChartCard>
+            </motion.div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function Kpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function DeltaChip({ delta, goodUp }: { delta: number | null; goodUp: boolean }) {
+  if (delta == null) return null
+  const up = delta >= 0
+  const good = goodUp ? up : !up
   return (
-    <div
-      className={cn(
-        "h-full rounded-2xl bg-card p-6 shadow-soft ring-1 ring-border transition-transform hover:-translate-y-1",
-        accent && "ring-accent/30",
-      )}
-    >
-      <div
-        className={cn(
-          "font-mono text-[10px] uppercase tracking-widest",
-          accent ? "text-accent" : "text-muted-foreground",
-        )}
-      >
-        {label}
-      </div>
-      <div className="mt-3 text-2xl font-semibold tabular-nums sm:text-3xl lg:text-4xl">{value}</div>
-    </div>
+    <span className={cn("font-mono text-[10px] tabular-nums", good ? "text-accent" : "text-destructive")}>
+      {up ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}%
+    </span>
   )
 }

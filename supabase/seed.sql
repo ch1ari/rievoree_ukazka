@@ -143,15 +143,21 @@ values (
 );
 
 -- ----------------------------------------------------------------------------
--- 5. History — one 'loaded' provenance batch per entity, then 18 months of
---    deterministic journal_entries (2024-11 … 2026-04).
---
---    Determinism: amount = base/lines × (1 ± jitter), where jitter is derived
---    from hashtext(entity||code||month||line) — stable across resets, no
---    random(). Side follows account type (asset/expense = debit, else credit).
---    Variance is small and centered, so each account's monthly net is a tight
---    baseline — which makes the seeded Utilities spike a clear z-score outlier.
+-- 5. History — realistic, BALANCED double-entry: 18 months (2024-11 … 2026-04)
+--    of revenue/cost activity per entity, posted as paired entries so the books
+--    TIE (trial balance nets to zero → balance sheet + cash flow reconcile with
+--    no plug). Entities differ by SCALE (factor), not noise; revenue carries a
+--    +0.8%/mo trend, ±15% seasonality (Q4 high) and ±4% noise; costs are sized
+--    for a ~15% operating margin. Deterministic (hashtext, no random()).
+--    Also seeds budgets + AR/AP invoices (schemas from migrations 21/22) and
+--    flags every demo entity as the shared sample sandbox.
 -- ----------------------------------------------------------------------------
+
+-- All four demo entities ARE the shared read-only sample sandbox (new registrants
+-- get membership to is_sample entities via the migration-20 trigger).
+update public.entities set is_sample = true;
+
+-- One 'loaded' provenance batch per entity (the history batch_id).
 insert into public.ingest_batches
   (entity_id, uploaded_by, source, file_name, storage_path, file_hash, period, status)
 select e.id, 'd0000000-0000-4000-8000-000000000003', 'manual', 'seed-history.csv',
@@ -159,37 +165,108 @@ select e.id, 'd0000000-0000-4000-8000-000000000003', 'manual', 'seed-history.csv
        'seedhistory-' || e.slug, '2026-04-01', 'loaded'
 from public.entities e;
 
-with base(code, b) as (values
-  ('1000', 5000), ('1100', 6000), ('1200', 4000), ('2000', 3500), ('2100', 1500),
-  ('3000', 2000), ('4000', 20000), ('4100', 8000), ('5000', 9000), ('6000', 12000),
-  ('6100', 3000), ('6200', 1000), ('6300', 2500)
+-- Per-(entity, month) financial model: actual revenue/costs, the no-noise plan
+-- (for budgets), opening capital/inventory, and prior-month figures (cash
+-- collections/payments lag one month → realistic A/R and A/P balances).
+create temp table seed_calc as
+with ent(id, slug, f) as (
+  select id, slug, (case slug when 'acme' then 1.6 when 'globex' then 1.0
+                              when 'initech' then 0.7 else 0.45 end)::numeric
+  from public.entities
+),
+raw as (
+  select e.id as entity_id, e.f, g.m,
+    (date '2024-11-01' + (g.m || ' months')::interval)::date as period,
+    (100000 * e.f)::numeric as base,
+    (1 + (((abs(hashtext(e.id::text||'rev'||g.m::text)) % 1000)::numeric/1000) - 0.5)*0.08) as rev_noise,
+    (1 + (((abs(hashtext(e.id::text||'sal'||g.m::text)) % 1000)::numeric/1000) - 0.5)*0.04) as sal_noise,
+    (1 + (((abs(hashtext(e.id::text||'utl'||g.m::text)) % 1000)::numeric/1000) - 0.5)*0.10) as utl_noise
+  from ent e cross join generate_series(0,17) as g(m)
+),
+plan as (
+  -- power()/sin() return double precision; round(numeric,int) needs a numeric cast.
+  select *, round((base * power(1.008, m) * (1 + 0.15*sin(2*pi()*m/12.0)))::numeric, 2) as plan_rev
+  from raw
+),
+calc as ( select *, round(plan_rev * rev_noise, 2) as rev from plan ),
+calc2 as (
+  select entity_id, m, period, base, plan_rev, rev,
+    round(rev*0.70,2) as prod, round(rev*0.30,2) as svc, round(rev*0.38,2) as cogs,
+    round(base*0.32*sal_noise,2) as sal, round(base*0.07,2) as rent,
+    round(base*0.03*utl_noise,2) as util, round(rev*0.075,2) as mktg,
+    round(plan_rev*0.70,2) as plan_prod, round(plan_rev*0.30,2) as plan_svc,
+    round(plan_rev*0.38,2) as plan_cogs, round(base*0.32,2) as plan_sal,
+    round(base*0.07,2) as plan_rent, round(base*0.03,2) as plan_util,
+    round(plan_rev*0.075,2) as plan_mktg, round(base*0.60,2) as cap, round(base*0.30,2) as inv
+  from calc
 )
+select *,
+  (prod+svc) as billed,
+  (cogs+sal+rent+util+mktg) as etot,
+  coalesce(lag(prod+svc) over w, 0) as billed_prev,
+  coalesce(lag(cogs+sal+rent+util+mktg) over w, 0) as etot_prev
+from calc2
+window w as (partition by entity_id order by m);
+
+-- Balanced entries (each pair debit=credit). All-zero rows (m=0 lagged
+-- collections/payments) are filtered to satisfy the debit-XOR-credit check.
 insert into public.journal_entries
   (entity_id, account_id, batch_id, txn_date, description, debit, credit, currency)
-select
-  a.entity_id,
-  a.id,
-  hb.id,
-  make_date(extract(year from dd.d0)::int, extract(month from dd.d0)::int, 2 + (l.ln % 26)),
-  a.name || ' ' || to_char(dd.d0, 'YYYY-MM'),
-  case when a.type in ('asset', 'expense') then ac.amt else 0 end,
-  case when a.type in ('asset', 'expense') then 0 else ac.amt end,
-  'EUR'
-from public.accounts a
-join base bm on bm.code = a.code
-join public.ingest_batches hb
-  on hb.entity_id = a.entity_id and hb.file_name = 'seed-history.csv'
-cross join generate_series(0, 17) as m(idx)
-cross join generate_series(1, 12) as l(ln)
-cross join lateral (
-  select (date '2024-11-01' + (m.idx || ' months')::interval)::date as d0
-) dd
-cross join lateral (
-  select round(
-    (bm.b / 12.0) *
-    (1 + ((hashtext(a.entity_id::text || a.code || m.idx::text || l.ln::text) % 1000)::numeric / 1000) * 0.12),
-    2) as amt
-) ac;
+select t.entity_id, a.id, hb.id,
+  (t.period + ((1 + (abs(hashtext(t.code||t.descr||t.entity_id::text||t.period::text)) % 26)) || ' days')::interval)::date,
+  t.descr || ' ' || to_char(t.period, 'YYYY-MM'),
+  t.debit, t.credit, 'EUR'
+from (
+  select entity_id, period, '1100' as code, billed as debit, 0::numeric as credit, 'A/R — revenue billed' as descr from seed_calc
+  union all select entity_id, period, '4000', 0, prod, 'Product sales' from seed_calc
+  union all select entity_id, period, '4100', 0, svc,  'Service revenue' from seed_calc
+  union all select entity_id, period, '5000', cogs, 0, 'Cost of goods sold' from seed_calc
+  union all select entity_id, period, '6000', sal,  0, 'Salaries' from seed_calc
+  union all select entity_id, period, '6100', rent, 0, 'Rent' from seed_calc
+  union all select entity_id, period, '6200', util, 0, 'Utilities' from seed_calc
+  union all select entity_id, period, '6300', mktg, 0, 'Marketing' from seed_calc
+  union all select entity_id, period, '2000', 0, etot, 'A/P — costs accrued' from seed_calc
+  union all select entity_id, period, '1000', billed_prev, 0, 'Cash — collections' from seed_calc
+  union all select entity_id, period, '1100', 0, billed_prev, 'A/R — collected' from seed_calc
+  union all select entity_id, period, '2000', etot_prev, 0, 'A/P — paid' from seed_calc
+  union all select entity_id, period, '1000', 0, etot_prev, 'Cash — payments' from seed_calc
+  union all select entity_id, period, '3000', 0, cap, 'Owner capital' from seed_calc where m = 0
+  union all select entity_id, period, '1000', cap, 0, 'Cash — capital in' from seed_calc where m = 0
+  union all select entity_id, period, '1200', inv, 0, 'Inventory — opening' from seed_calc where m = 0
+  union all select entity_id, period, '1000', 0, inv, 'Cash — inventory buy' from seed_calc where m = 0
+) t
+join public.accounts a on a.entity_id = t.entity_id and a.code = t.code
+join public.ingest_batches hb on hb.entity_id = t.entity_id and hb.file_name = 'seed-history.csv'
+where t.debit <> 0 or t.credit <> 0;
+
+-- Budget (demo): the no-noise plan, shifted per line so some lines beat and some
+-- miss vs actual (meaningful favourable/unfavourable variance).
+insert into public.budgets (entity_id, period, account_code, amount)
+select entity_id, period, code, amt from (
+  select entity_id, period, '4000' as code, round(plan_prod*0.97,2) as amt from seed_calc
+  union all select entity_id, period, '4100', round(plan_svc *1.02,2) from seed_calc
+  union all select entity_id, period, '5000', round(plan_cogs*1.04,2) from seed_calc
+  union all select entity_id, period, '6000', round(plan_sal *1.00,2) from seed_calc
+  union all select entity_id, period, '6100', round(plan_rent*1.00,2) from seed_calc
+  union all select entity_id, period, '6200', round(plan_util*0.90,2) from seed_calc
+  union all select entity_id, period, '6300', round(plan_mktg*1.05,2) from seed_calc
+) b
+on conflict (entity_id, period, account_code) do nothing;
+
+-- Open AR/AP invoices (demo) — due dates across all aging buckets, scaled by entity.
+insert into public.invoices (entity_id, kind, counterparty, issued_date, due_date, amount)
+select e.id, k.kind,
+  (case k.kind when 'ar' then 'Customer ' else 'Vendor ' end) || upper(left(e.slug,3)) || '-' || g.i,
+  (date '2026-05-31' - (a.age + 30)), (date '2026-05-31' - a.age),
+  round((100000 * (case e.slug when 'acme' then 1.6 when 'globex' then 1.0 when 'initech' then 0.7 else 0.45 end))
+        * (0.03 + g.i*0.015)
+        * (1 + (((abs(hashtext(e.slug||k.kind||g.i::text)) % 1000)::numeric/1000) - 0.5)*0.2), 2)
+from public.entities e
+cross join (values ('ar'),('ap')) as k(kind)
+cross join generate_series(1,6) as g(i)
+cross join lateral (select (array[8,26,44,67,88,119])[g.i] as age) a;
+
+drop table seed_calc;
 
 -- ----------------------------------------------------------------------------
 -- 6. Live batch on Northwind (period 2026-05) — staged rows including a 5×

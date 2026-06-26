@@ -1,69 +1,73 @@
 /* Fonts FIRST — CSS @import rules must precede all other statements (incl. the
-   tailwindcss import, which expands to rules). Fredoka = friendly rounded UI /
-   display · JetBrains Mono = numbers / x-ray console. */
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+   tailwindcss import, which expands to rules). All open-source (Google Fonts):
+   Saira = square grotesque UI · Saira Condensed = oversized editorial display +
+   big numbers · Saira Stencil One = stencil accent words · JetBrains Mono =
+   code / data / x-ray console. */
+@import url('https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600;700&family=Saira+Condensed:wght@600;700;800;900&family=Big+Shoulders+Display:wght@700;800;900&family=Big+Shoulders+Stencil+Display:wght@700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 /* ----------------------------------------------------------------------------
- * Direction B — "Cold developer": cool near-white canvas, electric indigo accent
- * + teal/periwinkle supports (no warm orange/amber), generous rounding, soft-blur
- * depth, blob/gradient decor. The X-ray surfaces stay a dark console (.dark).
+ * Direction "Bold Dark Editorial": near-black graphite canvas, ONE muted-emerald
+ * accent (disciplined — teal/red are DATA-STATUS signals only, not decor), square
+ * display type, high contrast. Depth comes from contrast + typography + hairline
+ * borders, NOT soft shadows or gradient mesh. The whole app is dark now, so .dark
+ * mirrors :root (the X-ray console no longer needs a separate light→dark flip).
  * Tokens follow the shadcn contract so every ui/ component inherits them.
  * -------------------------------------------------------------------------- */
 :root {
-  --radius: 1rem;                          /* rounded everything */
+  --radius: 0.5rem;                        /* crisp, near-square edges */
 
-  --background: oklch(0.99 0.004 265);     /* cool near-white */
-  --foreground: oklch(0.30 0.02 265);      /* soft slate ink (not hard black) */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.30 0.02 265);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.30 0.02 265);
-  --primary: oklch(0.30 0.02 265);         /* slate primary */
-  --primary-foreground: oklch(0.99 0.004 265);
-  --secondary: oklch(0.96 0.008 265);      /* cool tint */
-  --secondary-foreground: oklch(0.30 0.02 265);
-  --muted: oklch(0.96 0.008 265);
-  --muted-foreground: oklch(0.55 0.02 265);
-  --accent: oklch(0.55 0.24 280);          /* electric indigo-violet — the accent */
-  --accent-foreground: oklch(1 0 0);
-  --signal: oklch(0.72 0.12 185);          /* teal — positive / secondary */
-  --signal-foreground: oklch(1 0 0);
-  --cold: oklch(0.68 0.14 255);            /* periwinkle — cold third tone */
-  --destructive: oklch(0.58 0.22 18);      /* cool-leaning red */
-  --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.91 0.008 265);         /* cool hairline (not black) */
-  --input: oklch(0.91 0.008 265);
-  --ring: oklch(0.55 0.24 280);
+  --background: oklch(0.15 0.005 250);     /* near-black graphite */
+  --foreground: oklch(0.96 0.003 250);     /* near-white */
+  --card: oklch(0.19 0.005 250);           /* lifted graphite */
+  --card-foreground: oklch(0.96 0.003 250);
+  --popover: oklch(0.18 0.005 250);
+  --popover-foreground: oklch(0.96 0.003 250);
+  --primary: oklch(0.96 0.003 250);        /* high-contrast light primary */
+  --primary-foreground: oklch(0.15 0.005 250);
+  --secondary: oklch(0.24 0.006 250);      /* subtle lift */
+  --secondary-foreground: oklch(0.96 0.003 250);
+  --muted: oklch(0.24 0.006 250);
+  --muted-foreground: oklch(0.64 0.012 250);
+  --accent: oklch(0.72 0.12 158);          /* muted emerald — the ONE accent */
+  --accent-foreground: oklch(0.16 0.02 158); /* near-black on green */
+  --signal: oklch(0.74 0.13 190);          /* teal — positive DATA status only */
+  --signal-foreground: oklch(0.15 0.005 250);
+  --cold: oklch(0.45 0.02 250);            /* dim slate (legacy refs; not decor) */
+  --destructive: oklch(0.63 0.22 25);      /* red — negative/anomaly status */
+  --destructive-foreground: oklch(0.98 0.005 250);
+  --border: oklch(0.30 0.006 250);         /* hairline on dark */
+  --input: oklch(0.30 0.006 250);
+  --ring: oklch(0.72 0.12 158);            /* green focus */
 }
 
-/* X-ray panel & dark surfaces — dark console, rounded + colour-matched to B */
+/* Dark surfaces (X-ray console etc.) — same bold-dark system as :root. */
 .dark {
-  --background: oklch(0.20 0.02 265);
-  --foreground: oklch(0.97 0.005 70);
-  --card: oklch(0.24 0.02 265);
-  --card-foreground: oklch(0.97 0.005 70);
-  --popover: oklch(0.24 0.02 265);
-  --popover-foreground: oklch(0.97 0.005 70);
-  --primary: oklch(0.97 0.005 70);
-  --primary-foreground: oklch(0.20 0.02 265);
-  --secondary: oklch(0.28 0.02 265);
-  --secondary-foreground: oklch(0.97 0.005 70);
-  --muted: oklch(0.28 0.02 265);
-  --muted-foreground: oklch(0.70 0.02 265);
-  --accent: oklch(0.65 0.21 285);          /* electric indigo pops on dark */
-  --accent-foreground: oklch(0.20 0.02 265);
-  --signal: oklch(0.76 0.13 185);
-  --signal-foreground: oklch(0.20 0.02 265);
-  --cold: oklch(0.72 0.13 255);            /* periwinkle on dark */
-  --destructive: oklch(0.68 0.20 18);
-  --destructive-foreground: oklch(0.20 0.02 265);
-  --border: oklch(0.34 0.02 265);
-  --input: oklch(0.34 0.02 265);
-  --ring: oklch(0.65 0.21 285);
+  --background: oklch(0.13 0.005 250);
+  --foreground: oklch(0.96 0.003 250);
+  --card: oklch(0.17 0.005 250);
+  --card-foreground: oklch(0.96 0.003 250);
+  --popover: oklch(0.16 0.005 250);
+  --popover-foreground: oklch(0.96 0.003 250);
+  --primary: oklch(0.96 0.003 250);
+  --primary-foreground: oklch(0.15 0.005 250);
+  --secondary: oklch(0.22 0.006 250);
+  --secondary-foreground: oklch(0.96 0.003 250);
+  --muted: oklch(0.22 0.006 250);
+  --muted-foreground: oklch(0.64 0.012 250);
+  --accent: oklch(0.72 0.12 158);
+  --accent-foreground: oklch(0.16 0.02 158);
+  --signal: oklch(0.74 0.13 190);
+  --signal-foreground: oklch(0.15 0.005 250);
+  --cold: oklch(0.45 0.02 250);
+  --destructive: oklch(0.63 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 250);
+  --border: oklch(0.28 0.006 250);
+  --input: oklch(0.28 0.006 250);
+  --ring: oklch(0.72 0.12 158);
 }
 
 @theme inline {
@@ -95,33 +99,71 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 6px);
 
-  --font-sans: "Fredoka", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Saira", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Saira Condensed", "Saira", ui-sans-serif, sans-serif;
+  --font-stencil: "Big Shoulders Stencil Display", "Saira Condensed", sans-serif;
+  --font-poster: "Big Shoulders Display", "Big Shoulders Stencil Display", "Saira Condensed", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* ============================================================================
+ * "GREEN PAPER" LANDING — the whole landing as a lime fintech poster. These
+ * scoped token overrides flip the palette to BLACK INK on LIME inside `.paper`
+ * (the landing root + its header) WITHOUT touching the app's global dark theme,
+ * so inner pages (dashboard, login, …) stay dark. Most components re-skin for
+ * free because they read these tokens.
+ * -------------------------------------------------------------------------- */
+.paper {
+  --background: oklch(0.86 0.21 126);          /* lime, for any bg-background within */
+  --foreground: oklch(0.20 0.035 150);         /* near-black ink (faint green cast) */
+  --card: oklch(0.90 0.155 124);               /* a deeper-lime "paper" panel */
+  --card-foreground: oklch(0.20 0.035 150);
+  --popover: oklch(0.90 0.155 124);
+  --popover-foreground: oklch(0.20 0.035 150);
+  --primary: oklch(0.18 0.035 150);            /* ink */
+  --primary-foreground: oklch(0.88 0.20 124);  /* lime on ink */
+  --secondary: oklch(0.81 0.17 124);           /* deeper-lime chip */
+  --secondary-foreground: oklch(0.20 0.035 150);
+  --muted: oklch(0.88 0.15 124);
+  --muted-foreground: oklch(0.36 0.06 150);    /* secondary ink */
+  --accent: oklch(0.18 0.035 150);             /* "accent" → ink (headline, buttons, dots) */
+  --accent-foreground: oklch(0.88 0.20 124);   /* lime text on ink buttons */
+  --signal: oklch(0.34 0.07 196);              /* muted dark teal for status text */
+  --signal-foreground: oklch(0.88 0.20 124);
+  --border: oklch(0.22 0.04 150 / 0.34);       /* ink hairline on lime */
+  --input: oklch(0.22 0.04 150 / 0.34);
+  --ring: oklch(0.20 0.04 150);
+  color: var(--foreground);
+}
+/* On lime, kill the emerald text-glows / ignite (they muddy the black ink). */
+.paper .glow-accent { text-shadow: none; }
+.paper .ignite { animation: none !important; }
+
 @layer utilities {
-  /* Soft-blur depth (no hard shadows in direction B). */
+  /* Editorial depth = restrained crisp shadow (no pastel glow). Most surfaces
+     lean on hairline borders + contrast instead. */
   .shadow-soft {
-    box-shadow: 0 18px 40px -16px oklch(0.30 0.02 265 / 0.18);
+    box-shadow: 0 12px 40px -18px oklch(0 0 0 / 0.8);
   }
-  /* Cold gradient mesh backdrop for hero / feature blocks. */
-  .bg-mesh {
-    background-image:
-      radial-gradient(60% 60% at 85% 10%, oklch(0.55 0.24 280 / 0.16), transparent 70%),
-      radial-gradient(50% 50% at 10% 90%, oklch(0.72 0.12 185 / 0.16), transparent 70%),
-      radial-gradient(40% 40% at 50% 50%, oklch(0.68 0.14 255 / 0.12), transparent 70%);
+  /* Legacy decor stubs — neutralised for the bold-dark direction (kept so older
+     references don't break; no gradient mesh / organic blobs in editorial). */
+  .bg-mesh { background-image: none; }
+  .blob { border-radius: 0.5rem; }
+
+  /* Emerald accent glow for display accent words. */
+  .glow-accent {
+    text-shadow: 0 0 28px oklch(0.72 0.12 158 / 0.45);
   }
-  /* Organic blob radius (use with a fill colour + blur). */
-  .blob {
-    border-radius: 62% 38% 54% 46% / 49% 56% 44% 51%;
+  /* Display headline: square condensed, tight, uppercase editorial banner. */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 0.92;
   }
-  /* Animated gradient sweep for shimmer text. */
-  @keyframes shimmer {
-    to { background-position: -200% center; }
-  }
-  .animate-shimmer {
-    animation: shimmer 3.5s linear infinite;
-  }
+  .stencil { font-family: var(--font-stencil); font-weight: 800; }
+  /* Solid heavy poster face (Big Shoulders Display) — fintech-poster taglines. */
+  .poster { font-family: var(--font-poster); font-weight: 800; letter-spacing: -0.01em; text-transform: uppercase; }
 
   /* ---- X-ray scan (full-page radiograph → VS Code, landing only) --------- */
   /* The editor overlay is revealed top-down as the scan passes (--scan 0→1).
@@ -141,8 +183,8 @@
     z-index: 55; pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease;
-    background: linear-gradient(90deg, transparent, var(--accent), var(--cold), var(--signal), transparent);
-    box-shadow: 0 0 28px 7px oklch(0.55 0.24 280 / 0.5);
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    box-shadow: 0 0 30px 7px oklch(0.72 0.12 158 / 0.55);
   }
   .xray-scan[data-scan="run"] .xray-scanline { opacity: 1; }
 
@@ -175,20 +217,172 @@
     user-select: none;
   }
 
-  /* ---- Hero live X-ray window (looping preview) -------------------------- */
-  /* UI layer clipped away top-down as --xloop 0→1 reveals the code beneath. */
-  .xray-window-ui {
-    clip-path: inset(calc(var(--xloop, 0) * 100%) 0 0 0);
-    will-change: clip-path;
-    contain: paint;
+  /* ---- Torn-paper background (TornBackground) ---------------------------- */
+  .torn-code {
+    transform: translate3d(0, var(--sy, 0px), 0);
+    will-change: transform;
   }
-  .xray-window-scan {
+  .torn-glow {
     position: absolute;
-    left: 0; right: 0;
-    top: calc(var(--xloop, 0) * 100%);
-    height: 2px; z-index: 20; pointer-events: none;
-    background: linear-gradient(90deg, transparent, var(--accent), var(--cold), var(--signal), transparent);
-    box-shadow: 0 0 22px 5px oklch(0.55 0.24 280 / 0.5);
+    left: 0; top: 0;
+    width: 560px; height: 560px;
+    border-radius: 9999px;
+    transform: translate3d(calc(var(--mx, -9999px) - 280px), calc(var(--my, -9999px) - 280px), 0);
+    background: radial-gradient(circle, oklch(0.72 0.12 158 / 0.18), transparent 68%);
+    mix-blend-mode: screen;
+    will-change: transform;
+  }
+
+  /* ---- The rip (PageTear) — a CLICKABLE torn hole in the right of the hero ---
+   * An organic HOLE torn in the lime "paper" page, filling the freed right-hand
+   * space. Everything outside the tear is transparent, so the page's own lime IS
+   * the surface — no panel/box. Through the hole you see the DARK DEPTH beneath
+   * the paper: a slice of our REAL source (?raw), the same code the X-ray reveals,
+   * glowing in emerald. The torn lime edge peels up (3D) and shadows the hole; an
+   * emerald glow rises from the depth and a scan-line sweeps down it. Clicking
+   * anywhere in the hole toggles the full-page X-ray.
+   *
+   * Perf: ONLY transform animates (flap rotateX breathe + scan translateY), on
+   * composited layers. Clip-paths, grain, gradients, shadows are static.
+   * prefers-reduced-motion → flap held open, scan off. */
+  .rip {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0; border: 0; margin: 0;
+    background: transparent;
+    -webkit-appearance: none; appearance: none;
+    text-align: left;
+    cursor: pointer;                 /* the whole hole is the X-ray trigger */
+    pointer-events: auto;
+  }
+  .rip:focus-visible { outline: 2px solid oklch(0.20 0.04 150); outline-offset: 6px; border-radius: 6px; }
+  .rip-grain-def { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .rip-scene {
+    position: relative;
+    width: 100%;
+    height: clamp(380px, 56vh, 600px);   /* tall — fills the freed right space */
+    perspective: 1400px;
+    perspective-origin: 50% 16%;         /* eye sits above the tear, looking down in */
+  }
+
+  /* THE DARK DEPTH — visible ONLY inside the organic torn clip-path; the lime page
+     shows everywhere else, so the dark reads as a HOLE in the paper, not a box.
+     HAND-TORN irregular edges on ALL sides, leaving a lime margin in the column. */
+  .rip-depth {
+    position: absolute; inset: 0;
+    overflow: hidden;
+    clip-path: polygon(
+      5% 11%, 12% 4%, 20% 12%, 29% 5%, 38% 12%, 47% 4%, 56% 12%, 65% 5%, 74% 12%, 83% 5%, 91% 12%, 96% 7%,
+      97% 20%, 94% 32%, 97% 44%, 94% 56%, 97% 68%, 94% 80%, 96% 90%,
+      89% 95%, 80% 89%, 71% 96%, 62% 90%, 53% 96%, 44% 90%, 35% 96%, 26% 90%, 17% 95%, 8% 90%,
+      4% 80%, 7% 68%, 4% 56%, 7% 44%, 4% 32%, 6% 20%
+    );
+    background: linear-gradient(160deg,
+      oklch(0.04 0.004 250) 0%,
+      oklch(0.07 0.006 250) 30%,
+      oklch(0.105 0.02 158) 70%,
+      oklch(0.18 0.07 158) 100%);
+    /* the overhanging torn paper shadows the rim on every side → a real recessed hole */
+    box-shadow:
+      inset 0 30px 34px -12px oklch(0 0 0 / 0.95),
+      inset 24px 0 30px -16px oklch(0 0 0 / 0.8),
+      inset -24px 0 30px -16px oklch(0 0 0 / 0.8),
+      inset 0 -22px 34px -8px oklch(0.72 0.12 158 / 0.5);
+  }
+  /* The code reads like an editor pane: a left-aligned listing, centred in the
+     widest part of the hole, away from the ragged rim. */
+  .rip-code {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 1.15em;
+    padding: 13% 11% 14% 13%;
+  }
+  .rip-code pre { text-shadow: 0 0 7px oklch(0.74 0.13 158 / 0.45); }  /* code glows */
+  /* Hard shadow the overhanging top edge casts DOWN into the hole. */
+  .rip-overhang {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to bottom,
+      oklch(0 0 0 / 0.8) 0%, oklch(0 0 0 / 0.36) 14%, transparent 34%);
+  }
+  /* Emerald glow rising from the depth (light from below) — brightens on hover. */
+  .rip-floor {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to top,
+      oklch(0.72 0.13 158 / 0.42) 0%, oklch(0.72 0.12 158 / 0.1) 28%, transparent 56%);
+    transition: opacity 0.3s ease;
+  }
+  .rip:hover .rip-floor { opacity: 1.35; }
+  /* Scan-line sweeping DOWN the hole (echoes the X-ray scan). translateY ONLY. */
+  .rip-scan {
+    position: absolute; left: 0; right: 0; top: 0;
+    height: 26%; pointer-events: none;
+    background: linear-gradient(to bottom,
+      transparent 0%, oklch(0.88 0.16 158 / 0.1) 42%, oklch(0.95 0.18 158 / 0.22) 50%,
+      oklch(0.88 0.16 158 / 0.1) 58%, transparent 100%);
+    mix-blend-mode: screen;
+    will-change: transform;
+    transform: translateY(-120%);
+    animation: rip-scan 6.5s ease-in-out infinite;
+  }
+
+  /* ---- THE PEELED TORN LIME EDGE -----------------------------------------
+   * The paper at the TOP of the hole, lifted toward the viewer. Same lime as the
+   * page (reads as the page peeling, no top seam), lit torn bottom edge + shadow
+   * cast DOWN into the depth. Hinged at the TOP; rotateX tips the torn edge out. */
+  .rip-flap {
+    position: absolute;
+    left: 4%; right: 4%; top: 0;
+    height: 30%;
+    isolation: isolate;
+    background: linear-gradient(to bottom,
+      oklch(0.86 0.21 126) 0%, oklch(0.90 0.215 125) 72%, oklch(0.95 0.20 124) 100%);
+    clip-path: polygon(
+      0 0, 100% 0,
+      100% 40%, 95% 56%, 90% 70%, 84% 52%, 78% 72%, 72% 54%, 66% 73%, 60% 51%, 54% 70%,
+      48% 56%, 42% 72%, 36% 52%, 30% 71%, 24% 55%, 18% 72%, 13% 50%, 8% 68%, 3% 52%, 0 40%
+    );
+    transform-origin: 50% 0%;
+    transform: rotateX(28deg);
+    will-change: transform;
+    box-shadow:
+      inset 0 -24px 16px -10px oklch(0.99 0.15 123 / 1),     /* bright lit torn lip */
+      0 26px 26px -6px oklch(0 0 0 / 0.6);                   /* shadow cast DOWN into the hole */
+    animation: rip-breathe 7s ease-in-out infinite;
+  }
+  /* Matte paper grain — two static SVG feTurbulence passes on the lime flap. */
+  .rip-grain { position: absolute; inset: -2px; pointer-events: none; }
+  .rip-grain--tooth { filter: url(#rip-tooth); mix-blend-mode: multiply; opacity: 0.16; }
+  .rip-grain--fiber { filter: url(#rip-fiber); mix-blend-mode: soft-light; opacity: 0.24; }
+
+  /* "click to x-ray" hint — sits in the depth, brightens on hover. */
+  .rip-hint {
+    position: absolute; left: 50%; bottom: 7%;
+    transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 0.5em;
+    padding: 0.5em 0.9em; border-radius: 9999px;
+    background: oklch(0.04 0.004 250 / 0.5);
+    border: 1px solid oklch(0.82 0.15 158 / 0.4);
+    color: oklch(0.86 0.15 158);
+    font-family: var(--font-mono);
+    font-size: 0.66rem; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0.72;
+    transition: opacity 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+  }
+  .rip:hover .rip-hint {
+    opacity: 1;
+    border-color: oklch(0.86 0.16 158 / 0.85);
+    background: oklch(0.06 0.01 158 / 0.6);
+  }
+
+  /* ---- breathe + scan keyframes (the ONLY animations) --------------------- */
+  @keyframes rip-breathe {
+    0%, 100% { transform: rotateX(25deg); }
+    50%      { transform: rotateX(31deg); }
+  }
+  @keyframes rip-scan {
+    0%   { transform: translateY(-120%); }
+    100% { transform: translateY(400%); }
   }
 
   /* Full-bleed background orbs (OrbsBackground). */
@@ -204,27 +398,29 @@
   }
 }
 
-/* Registered custom property so the hero X-ray window can interpolate its scan
-   purely in CSS (no per-frame JS / React). */
-@property --xloop {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
+/* One-shot accent "ignite" — the accent word's glow rises after it lands. */
+@keyframes accent-ignite {
+  0%   { text-shadow: 0 0 0 transparent; }
+  60%  { text-shadow: 0 0 40px oklch(0.72 0.12 158 / 0.75); }
+  100% { text-shadow: 0 0 28px oklch(0.72 0.12 158 / 0.45); }
 }
-@keyframes xray-loop {
-  0%, 12%   { --xloop: 0; }
-  50%       { --xloop: 1; }
-  88%, 100% { --xloop: 0; }
-}
-.xray-window[data-animate="true"] {
-  animation: xray-loop 7s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+.ignite { animation: accent-ignite 0.9s ease-out 0.55s both; }
+
+/* Slightly smaller rip on small screens (it stacks below the hero copy there). */
+@media (max-width: 768px) {
+  .rip-scene { height: clamp(300px, 46vh, 420px); perspective: 1000px; }
 }
 
 /* Reduced motion: hold everything still, keep a calm static reveal. */
 @media (prefers-reduced-motion: reduce) {
   .orb, .animate-shimmer { animation: none !important; }
   .xray-scanline { display: none !important; }
-  .xray-window[data-animate] { animation: none !important; }
+  .ignite { animation: none !important; }
+  .torn-glow { display: none !important; }
+  .torn-code { transform: none !important; }
+  /* No breath — hold the torn edge peeled open + still, scan off. */
+  .rip-flap { animation: none !important; transform: rotateX(28deg) !important; }
+  .rip-scan { display: none !important; }
 }
 
 @layer base {

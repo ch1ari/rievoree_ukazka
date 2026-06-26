@@ -292,3 +292,4 @@ create policy entity_members_write on public.entity_members
   for all to authenticated
   using ((select private.is_super_admin()))
   with check ((select private.is_super_admin()));
+

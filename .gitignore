@@ -21,3 +21,11 @@ scan-*.png
 hero-*.png
 page-*.png
 shell-*.png
+dark-*.png
+dark2-*.png
+
+# design reference images (local only, never committed)
+.design-refs/
+paper-*.png
+rip-*.png
+inner-*.png

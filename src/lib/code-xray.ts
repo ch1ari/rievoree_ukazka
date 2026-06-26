@@ -80,6 +80,15 @@ export function sliceStatement(raw: string, startNeedle: string): string {
   return dedent(stripComments(lines.slice(start, end + 1).join("\n")))
 }
 
+/** Grab `count` real lines starting at the line containing `needle` (comment-free,
+ *  dedented). For pulling a representative fragment of a worker/edge file. */
+export function sliceFrom(raw: string, needle: string, count: number): string {
+  const lines = raw.split("\n")
+  const start = lines.findIndex((l) => l.includes(needle))
+  if (start === -1) return ""
+  return dedent(stripComments(lines.slice(start, start + count).join("\n")))
+}
+
 // ---------------------------------------------------------------------------
 // Shiki — fine-grained core, lazy singleton. Bundles ONLY the Dark+ theme + the
 // grammars we use + the oniguruma engine (no 200-language chunk explosion).

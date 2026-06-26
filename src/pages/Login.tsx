@@ -1,17 +1,14 @@
 import { useState } from "react"
 import { Link, useNavigate, useSearch } from "@tanstack/react-router"
-import { motion } from "motion/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { OrbsBackground } from "@/components/OrbsBackground"
 import { supabase } from "@/lib/supabase"
+import { AuthShell } from "@/components/auth/AuthShell"
+import { TwoFactorChallenge } from "@/components/auth/TwoFactorChallenge"
+import { needsMfaChallenge } from "@/lib/auth/mfa"
 
 /**
- * Login — email/password over the SAME path the X-ray RLS demo uses:
- * supabase.auth.signInWithPassword on the one factory. No separate auth client.
- * On success the AuthProvider's onAuthStateChange fires; we redirect back to the
- * page the guard bounced from (or the dashboard).
+ * Sign in — email/password over the SAME instrumented factory the X-ray RLS demo
+ * uses. Three clear paths: explore the demo (no account), sign in, create account.
+ * If the account has a verified TOTP factor, we step the session up to aal2.
  */
 const DEMO_PASSWORD = "demo123456"
 const DEMO_USERS = [
@@ -20,6 +17,9 @@ const DEMO_USERS = [
   { label: "Admin", email: "admin@demo.local" },
 ] as const
 
+const fieldClass =
+  "rounded-full border border-border bg-foreground/[0.04] px-5 py-3 text-foreground placeholder:text-foreground/40 outline-none transition focus:border-foreground/60"
+
 export function Login() {
   const navigate = useNavigate()
   const { redirect } = useSearch({ from: "/login" })
@@ -27,118 +27,58 @@ export function Login() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [stage, setStage] = useState<"creds" | "mfa">("creds")
 
-  async function signIn(withEmail: string, withPassword: string) {
-    setBusy(true)
-    setError(null)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: withEmail,
-      password: withPassword,
-    })
-    setBusy(false)
-    if (error) {
-      setError(error.message)
-      return
-    }
-    navigate({ to: redirect ?? "/dashboard" })
+  const dest = redirect ?? "/dashboard"
+  const done = () => navigate({ to: dest })
+
+  async function afterPassword() {
+    if (await needsMfaChallenge()) { setStage("mfa"); return }
+    done()
   }
 
+  async function signIn(withEmail: string, withPassword: string) {
+    setBusy(true); setError(null)
+    const { error } = await supabase.auth.signInWithPassword({ email: withEmail, password: withPassword })
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    await afterPassword()
+  }
+
+  if (stage === "mfa") return (
+    <AuthShell title="Two-factor">
+      <TwoFactorChallenge onVerified={done} />
+    </AuthShell>
+  )
+
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-6">
-      <OrbsBackground />
+    <AuthShell title="Sign in">
+      <form onSubmit={(e) => { e.preventDefault(); void signIn(email, password) }} className="flex flex-col gap-3">
+        <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className={fieldClass} />
+        <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className={fieldClass} />
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+        <button type="submit" disabled={busy}
+          className="mt-2 rounded-full bg-accent px-6 py-3.5 text-sm font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110 disabled:opacity-60">
+          {busy ? "Entering…" : "Sign in"}
+        </button>
+      </form>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-sm"
-      >
-        <div className="mb-8 text-center">
-          <Link to="/" className="text-3xl font-semibold tracking-tight">
-            X-RAY<span className="bg-gradient-to-r from-accent to-signal bg-clip-text text-transparent">/</span>
-          </Link>
-          <p className="mt-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Sign in to continue
-          </p>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        No account? <Link to="/register" className="font-semibold text-foreground underline-offset-4 hover:underline">Create one</Link>
+      </p>
+
+      {/* Demo convenience — one-click sign-in as a seeded role (read-only). */}
+      <div className="mt-6 border-t border-border pt-5">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Explore as a role (demo)</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {DEMO_USERS.map((u) => (
+            <button key={u.email} onClick={() => void signIn(u.email, DEMO_PASSWORD)} disabled={busy}
+              className="rounded-full border border-border px-4 py-2 text-sm text-foreground transition hover:bg-foreground hover:text-background disabled:opacity-50">
+              {u.label}
+            </button>
+          ))}
         </div>
-
-        <div className="rounded-[1.75rem] bg-card p-8 shadow-soft ring-1 ring-border">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              void signIn(email, password)
-            }}
-            className="space-y-5"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="font-mono text-xs uppercase tracking-wider">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="rounded-xl font-mono"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="font-mono text-xs uppercase tracking-wider">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="rounded-xl font-mono"
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="font-mono text-xs text-destructive">
-                {error}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              size="lg"
-              disabled={busy}
-              className="w-full rounded-full bg-accent text-accent-foreground hover:bg-accent/90 hover:scale-[1.02]"
-            >
-              {busy ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-
-          {/* Demo convenience — one-click sign-in as a seeded role (local only). */}
-          <div className="mt-7 border-t border-border pt-6">
-            <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Demo login
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {DEMO_USERS.map((u) => (
-                <Button
-                  key={u.email}
-                  variant="outline"
-                  size="sm"
-                  disabled={busy}
-                  className="rounded-full font-mono text-xs"
-                  onClick={() => void signIn(u.email, DEMO_PASSWORD)}
-                >
-                  {u.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          Read-only sandbox · seeded demo roles · fake data
-        </p>
-      </motion.div>
-    </div>
+      </div>
+    </AuthShell>
   )
 }
