@@ -17,7 +17,10 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatches"
+import { useEntityRuleset, useSaveRuleset } from "@/lib/data/useRuleset"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { IngestRules } from "@/components/IngestRules"
+import { IngestMapping } from "@/components/IngestMapping"
 
 function canManage(role: string | null) {
   return role === "manager" || role === "admin" || role === "super_admin"
@@ -43,12 +46,26 @@ export function Ingest() {
   const [entityId, setEntityId] = useState("")
   const [period, setPeriod] = useState("")
   const [file, setFile] = useState<File | null>(null)
+  const [mapping, setMapping] = useState<Record<string, string[]> | null>(null)
+
+  const eff = useEntityRuleset(entityId || undefined)
+  const saveRules = useSaveRuleset(entityId || undefined)
 
   const names = new Map((entities ?? []).map((e) => [e.id, e.name]))
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!file || !entityId || !period) return
+    // Persist the column mapping onto the entity's ruleset so the worker reads
+    // the right columns; abort the upload if that publish fails.
+    if (mapping && eff.data) {
+      try {
+        await saveRules.mutateAsync({
+          ...eff.data.rules,
+          header_aliases: { ...eff.data.rules.header_aliases, ...mapping },
+        })
+      } catch { return }
+    }
     upload.mutate({ entityId, period: `${period}-01`, file })
   }
 
@@ -93,10 +110,18 @@ export function Ingest() {
           <Label className="font-mono text-[10px] uppercase tracking-widest">File (CSV / XLSX)</Label>
           <FilePicker file={file} accept=".csv,.xlsx,text/csv" onPick={setFile} />
         </div>
-        <Button type="submit" className="font-mono" disabled={upload.isPending}>
-          {upload.isPending ? "Uploading…" : "Upload"}
+        <Button type="submit" className="font-mono" disabled={upload.isPending || saveRules.isPending}>
+          {upload.isPending || saveRules.isPending ? "Uploading…" : "Upload"}
         </Button>
 
+        {/* Column mapping (CSV) — folds open once a file is chosen. */}
+        <IngestMapping file={file} rules={eff.data?.rules} onChange={setMapping} />
+
+        {saveRules.isError && (
+          <p role="alert" className="font-mono text-xs text-destructive md:col-span-4">
+            Could not save column mapping: {(saveRules.error as Error).message}
+          </p>
+        )}
         {upload.error && (
           <p role="alert" className="font-mono text-xs text-destructive md:col-span-4">
             {upload.error.message}
@@ -110,6 +135,11 @@ export function Ingest() {
           </p>
         )}
       </form>
+      )}
+
+      {/* Approval rules — what passes the import for this entity. */}
+      {canManage(role) && entityId && (
+        <IngestRules entityId={entityId} entityName={names.get(entityId)} />
       )}
 
       {/* Batches */}
