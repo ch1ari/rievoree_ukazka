@@ -9,6 +9,7 @@ import { EntityManager } from "@/components/EntityManager"
 const ROLES: { value: SwitchableRole; label: string; blurb: string }[] = [
   { value: "viewer", label: "Viewer", blurb: "Read-only. Sees finished reports, but no ingest machinery or approvals." },
   { value: "manager", label: "Manager", blurb: "Uploads batches and approves them — the full ingest → review → load flow." },
+  { value: "admin", label: "Admin", blurb: "Manager rights plus managing the chart of accounts — scoped to your own entities." },
 ]
 
 export function Account() {

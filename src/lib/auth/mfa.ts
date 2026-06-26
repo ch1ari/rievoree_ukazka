@@ -25,10 +25,11 @@ export async function signUpWithProfile(email: string, password: string, fullNam
 }
 
 export type ProvisionMode = "demo" | "own"
-// Sandbox users are scoped to entities they own. Admin (which sees ALL entities,
-// including the showcase) is intentionally NOT offered — it would let a registrant
-// see/approve the showcase tenants. Viewer vs manager is the meaningful contrast.
-export type SwitchableRole = "viewer" | "manager"
+// Self-registered users may be viewer/manager/admin. Crucially, admin is SCOPED:
+// private.is_admin() is global only for platform accounts that own no sandbox, so
+// a registered admin sees/approves ONLY their own entities (RLS, migration 27) —
+// the showcase tenants are never visible to them.
+export type SwitchableRole = "viewer" | "manager" | "admin"
 
 /** Post-signup setup: set the chosen role and build a personal sandbox — a clone
  *  of the demo data ('demo') or an empty workspace ('own'). Server-side RPC. */
