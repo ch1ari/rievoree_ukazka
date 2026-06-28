@@ -66,7 +66,8 @@ export function Ingest() {
   const [file, setFile] = useState<File | null>(null)
   const [mapping, setMapping] = useState<Record<string, string[]> | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [pending, setPending] = useState<{ rows: StagingRow[]; codes: string[] } | null>(null)
+  const [pending, setPending] = useState<{ rows: StagingRow[]; codes: string[]; period: string } | null>(null)
+  const [mapError, setMapError] = useState<string | null>(null)
 
   const eff = useEntityRuleset(entityId || undefined)
   const saveRules = useSaveRuleset(entityId || undefined)
@@ -76,14 +77,27 @@ export function Ingest() {
   const names = new Map((entities ?? []).map((e) => [e.id, e.name]))
   const selected = (batches.data ?? []).find((b) => b.id === selectedId) ?? null
 
-  function doUpload(rows: StagingRow[] | null) {
+  function doUpload(rows: StagingRow[] | null, p: string) {
     if (!file) return
-    upload.mutate({ entityId, period: `${period}-01`, file, rows })
+    upload.mutate(
+      { entityId, period: `${p}-01`, file, rows },
+      { onSuccess: (data) => { if ((data as { status?: string })?.status === "created") { setFile(null); setMapping(null) } } },
+    )
     setPending(null)
+  }
+
+  // The period the data actually belongs to — the most common month in its dates.
+  function dominantPeriod(rows: StagingRow[]): string | null {
+    const counts = new Map<string, number>()
+    for (const r of rows) if (r.txn_date) { const m = r.txn_date.slice(0, 7); counts.set(m, (counts.get(m) ?? 0) + 1) }
+    let best: string | null = null, bestN = 0
+    for (const [m, n] of counts) if (n > bestN) { best = m; bestN = n }
+    return best
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    setMapError(null)
     if (!file || !entityId || !period) return
 
     // Effective aliases = the entity ruleset's, plus any manual mapping the user set.
@@ -99,18 +113,31 @@ export function Ingest() {
     }
 
     // XLSX has no client parser → upload without rows (still needs the worker).
-    if (!/\.csv$/i.test(file.name)) { doUpload(null); return }
+    if (!/\.csv$/i.test(file.name)) { doUpload(null, period); return }
 
     // Parse CSV in the browser → typed rows for process_uploaded_rows.
     const text = await file.text()
     const rows = parseCsvToRows(text, aliases, rules.date_formats, rules.amount_mode).rows
 
+    // Required columns must be mappable, else every row errors. Force mapping first.
+    if (rows.length && rows.every((r) => !r.account_code)) {
+      setMapError("Couldn't find the Account code column — map it below, then upload again."); return
+    }
+    if (rows.length && rows.every((r) => !r.txn_date)) {
+      setMapError("Couldn't read the Date column — map it (or check the date format) below, then upload again."); return
+    }
+
+    // Period is taken from the file's own dates (authoritative) so it can't
+    // mismatch what you picked; reflect it in the selector.
+    const filePeriod = dominantPeriod(rows) ?? period
+    if (filePeriod !== period) setPeriod(filePeriod)
+
     // Any account codes not yet in the chart? Classify them first, then upload.
     const have = new Set((accounts.data ?? []).map((a) => a.code))
     const unknown = [...new Set(rows.map((r) => r.account_code).filter((c): c is string => !!c && !have.has(c)))]
-    if (unknown.length) { setPending({ rows, codes: unknown }); return }
+    if (unknown.length) { setPending({ rows, codes: unknown, period: filePeriod }); return }
 
-    doUpload(rows)
+    doUpload(rows, filePeriod)
   }
 
   async function confirmClassify(newAccounts: Account[]) {
@@ -118,7 +145,7 @@ export function Ingest() {
     try {
       await upsertAccounts.mutateAsync(newAccounts)
     } catch { return } // error surfaced via upsertAccounts.isError below
-    doUpload(pending.rows)
+    doUpload(pending.rows, pending.period)
   }
 
   return (
@@ -172,6 +199,11 @@ export function Ingest() {
         {/* Column mapping (CSV) — folds open once a file is chosen. */}
         <IngestMapping file={file} rules={eff.data?.rules} onChange={setMapping} />
 
+        {mapError && (
+          <p role="alert" className="font-mono text-xs text-destructive md:col-span-4">
+            {mapError}
+          </p>
+        )}
         {saveRules.isError && (
           <p role="alert" className="font-mono text-xs text-destructive md:col-span-4">
             Could not save column mapping: {(saveRules.error as Error).message}
