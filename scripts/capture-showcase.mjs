@@ -188,8 +188,9 @@ if (LIVE) {
 // 01 — Ingest (upload + batches). 02 — Reports (RLS-scoped roll-up).
 await shoot(page, "/ingest", "01-ingest.png")
 await shoot(page, "/reports", "02-isolated.png")
-// 03 — the X-ray console, opened over the Reports page (full of live calls).
-await shoot(page, "/reports", "03-observable.png", async (pg) => {
+// 03 — the X-ray console, opened over the Dashboard (different page than 02, so
+// the showcase doesn't show Reports twice; full of live calls either way).
+await shoot(page, "/dashboard", "03-observable.png", async (pg) => {
   await pg.click('button[aria-label="Open X-ray panel"]').catch(() => {})
   await pg.waitForTimeout(1200)
 })

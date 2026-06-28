@@ -7,6 +7,7 @@ import { PageTear } from "@/components/PageTear"
 import { useXray } from "@/components/XrayContext"
 import { CountUp } from "@/components/CountUp"
 import { Showcase } from "@/components/Showcase"
+import { TearFrame, TearDefs } from "@/components/TearFrame"
 
 // TODO(mariia): replace with your real links before deploy.
 const GITHUB_URL = "https://github.com/your-handle/xray-reporting-engine"
@@ -60,6 +61,8 @@ export function Landing() {
 
   return (
     <div>
+      {/* Shared torn-edge filter for every TearFrame on the page (rendered once). */}
+      <TearDefs />
       <XrayScan>
       {/* 1 — Hero: bold dark editorial. Oversized square headline + pitch + CTAs
           anchored LEFT; RIGHT holds a fixed, quietly pulsing rip in the freed
@@ -192,25 +195,28 @@ export function Landing() {
         <section>
           <SectionHead eyebrow="X-ray panel" title="The backend runs in the open."
             intro="Every page in the demo carries a live console — the same seam, three lenses on what just ran." />
+          {/* The console itself shows THROUGH a rip in the lime paper — the dark
+              machinery beneath the surface, not a flat green card. */}
           <Reveal className="mt-12">
-            <motion.div whileHover={{ y: -4 }}
-              className="overflow-hidden rounded-[1.75rem] border border-border">
-              <div className="flex items-center gap-2 border-b border-border px-6 py-4 font-mono text-xs text-muted-foreground">
-                <span className="size-2 animate-pulse rounded-full bg-foreground" /> X-ray panel · live on every page in the demo
+            <TearFrame panel>
+              <div className="px-8 py-8 md:px-14 md:py-11">
+                <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                  <span className="size-2 animate-pulse rounded-full bg-accent" /> X-ray panel · live on every page in the demo
+                </div>
+                <div className="mt-7 grid gap-px overflow-hidden rounded-xl bg-border/40 md:grid-cols-3">
+                  {TABS.map((t) => (
+                    <div key={t.k} className="bg-background p-6 transition-colors hover:bg-foreground/[0.04]">
+                      <div className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">{t.k}</div>
+                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t.d}</p>
+                      <div className="mt-5 truncate rounded-lg border border-border px-3 py-2.5 font-mono text-[11px] text-foreground/70">{t.line}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-7">
+                  <PanelXrayButton />
+                </div>
               </div>
-              <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
-                {TABS.map((t) => (
-                  <div key={t.k} className="p-7 transition-colors hover:bg-foreground/[0.04]">
-                    <div className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">{t.k}</div>
-                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t.d}</p>
-                    <div className="mt-5 truncate rounded-xl border border-border px-3 py-2.5 font-mono text-[11px] text-foreground/65">{t.line}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-border px-6 py-6">
-                <PanelXrayButton />
-              </div>
-            </motion.div>
+            </TearFrame>
           </Reveal>
         </section>
 

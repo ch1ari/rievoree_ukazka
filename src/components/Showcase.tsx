@@ -1,4 +1,5 @@
 import { motion } from "motion/react"
+import { TearFrame } from "@/components/TearFrame"
 import { sliceStatement, sliceFrom } from "@/lib/code-xray"
 import img01 from "@/assets/showcase/01-ingest.png"
 import img02 from "@/assets/showcase/02-isolated.png"
@@ -79,21 +80,19 @@ function Accent({ kind }: { kind: Kind }) {
   )
 }
 
+/** The product screenshot, revealed through a torn hole in the lime paper — the
+ *  dark app shows through the rip (machinery beneath the surface), not as a flat
+ *  card. A small mono caption sits below, outside the tear. */
 function Frame({ label, src }: { label: string; src: string }) {
   return (
-    <div className="group overflow-hidden rounded-xl border border-border">
-      <div className="flex items-center gap-2 border-b border-border bg-foreground/[0.04] px-4 py-2.5">
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground">{label}</span>
-      </div>
-      <div className="relative overflow-hidden">
+    <div className="group">
+      <TearFrame className="h-[280px] lg:h-[340px]">
         <img src={src} alt="" loading="lazy"
-          className="block max-h-[300px] w-full origin-top object-cover object-top transition-transform duration-500 group-hover:scale-[1.03] lg:max-h-[360px]" />
-        {/* faint green duotone that lifts on hover — the screen "comes alive" */}
-        <div className="pointer-events-none absolute inset-0 bg-accent/12 mix-blend-overlay transition-opacity duration-500 group-hover:opacity-0" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/40 to-transparent" />
+          className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]" />
+      </TearFrame>
+      <div className="mt-3 flex items-center gap-2 px-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="size-1.5 rounded-full bg-accent" />
+        <span className="truncate">{label}</span>
       </div>
     </div>
   )
