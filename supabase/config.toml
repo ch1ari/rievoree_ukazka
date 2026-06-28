@@ -334,6 +334,30 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
+# ---------------------------------------------------------------------------
+# Social login (PLAN.md §7). "Sign in with Google / GitHub" sits beside password
+# auth on /login and /register (supabase.auth.signInWithOAuth). The buttons work
+# the moment these provider secrets are set; until then the provider returns
+# "provider is not enabled" and the UI surfaces it gracefully.
+#
+# Set the secrets as env vars (NEVER commit them):
+#   SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID / ..._SECRET
+#   SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID / ..._SECRET
+# These are SEPARATE from the Drive connector OAuth app (GOOGLE_OAUTH_* in the
+# edge runtime) — login identity vs. Drive data access are different grants.
+# ---------------------------------------------------------------------------
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Required for local sign-in with Google (skips the nonce check).
+skip_nonce_check = true
+
+[auth.external.github]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
+
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]
@@ -396,6 +420,37 @@ verify_jwt = true
 # verify_jwt stays on — pg_net sends the service_role JWT as the bearer, which
 # the platform accepts before the function runs (same posture as ingest-submit).
 [functions.notify-review]
+enabled = true
+verify_jwt = true
+
+# connector-webhook: a PUBLIC inbound endpoint. There is no project JWT — the
+# HMAC signature (constant-time verified inside) is the authentication, so
+# verify_jwt MUST be off or the platform would reject every external caller.
+[functions.connector-webhook]
+enabled = true
+verify_jwt = false
+
+# connector-oauth: starts the Google Drive OAuth flow for the signed-in manager.
+[functions.connector-oauth]
+enabled = true
+verify_jwt = true
+
+# connector-callback: Google's redirect target. The browser arrives from Google
+# with no project JWT, so verify_jwt is off; the HMAC-signed `state` is the gate.
+[functions.connector-callback]
+enabled = true
+verify_jwt = false
+
+# connector-sync: user-triggered ("Sync now") or cron-triggered Drive pull. Cron
+# mode presents the service_role bearer, which the platform accepts.
+[functions.connector-sync]
+enabled = true
+verify_jwt = true
+
+# admin-users: privileged user management (create / reset password / reset MFA).
+# verify_jwt on; the function additionally requires the caller to be a platform
+# admin (is_platform_admin RPC under the caller's JWT) before using the service role.
+[functions.admin-users]
 enabled = true
 verify_jwt = true
 
