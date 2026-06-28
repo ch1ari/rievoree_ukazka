@@ -261,33 +261,16 @@
     height: clamp(440px, 66vh, 700px);   /* tall — fills the freed right space */
   }
 
-  /* The torn edge: the clipped inner is displaced by the filter on this parent.
-     The drop-shadow rides the ragged contour, casting the torn sheet onto the
-     lime page below — the single biggest "it's lifted off the page" 3D cue. */
+  /* A clean drop-shadow seats the window into the page (no ragged edge). */
   .rip-depth {
     position: absolute; inset: 0;
-    filter: url(#rip-torn) drop-shadow(0 18px 26px oklch(0.15 0.03 150 / 0.4));
+    filter: drop-shadow(0 22px 34px oklch(0.15 0.03 150 / 0.42));
   }
-  /* The torn paper's THICKNESS — a lighter-lime underside clipped a touch larger
-     than the dark hole, so a ragged bright rim shows around it (the cut edge of
-     the sheet catching light). A faint inner shadow seats it against the depth. */
-  .rip-lip {
-    position: absolute; inset: 0;
-    clip-path: inset(1.5% -8% 2% 3.2% round 38px);
-    background:
-      linear-gradient(158deg,
-        oklch(0.95 0.11 122) 0%,
-        oklch(0.90 0.16 124) 34%,
-        oklch(0.78 0.18 128) 72%,
-        oklch(0.66 0.17 132) 100%);
-    box-shadow: inset 0 10px 16px -8px oklch(0.15 0.03 150 / 0.55);
-  }
-  /* The HOLE — a smooth rounded rect, inset on the torn sides (top/left/bottom)
-     and bleeding off the right edge. The parent filter tears this clean edge.
-     Layered inset shadows make every torn flap cast INTO the hole — deep, boxy. */
+  /* The HOLE — a clean smooth rounded window, inset on three sides and bleeding
+     off the right edge. Layered inset shadows make it read as a deep recess. */
   .rip-depth-inner {
     position: absolute; inset: 0;
-    clip-path: inset(4% -8% 5% 6% round 34px);
+    clip-path: inset(4% -8% 5% 6% round 28px);
     background:
       radial-gradient(120% 90% at 50% 118%, oklch(0.20 0.08 158 / 0.9), transparent 60%),
       linear-gradient(160deg,
@@ -328,7 +311,7 @@
      inside it. translateY ONLY. */
   .rip-scan {
     position: absolute; inset: 0; pointer-events: none;
-    clip-path: inset(4% -8% 5% 6% round 34px);
+    clip-path: inset(4% -8% 5% 6% round 28px);
   }
   .rip-scan::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26%;
@@ -368,51 +351,6 @@
     0%   { transform: translateY(-120%); }
     100% { transform: translateY(400%); }
   }
-
-  /* ---- Reusable torn frame (TearFrame) — a ragged hole that holds content ----
-   * Same recipe as the hero rip, scaled down: a lighter-lime rim (paper edge)
-   * behind a dark hole; the #rip-torn-sm filter on .tear-paper frays both clip
-   * edges, and a contour drop-shadow lifts the sheet off the lime page. */
-  .tear-frame { position: relative; width: 100%; }
-  .tear-paper {
-    position: absolute; inset: 0;
-    filter: url(#rip-torn-sm) drop-shadow(0 16px 24px oklch(0.15 0.03 150 / 0.38));
-  }
-  .tear-rim {
-    position: absolute; inset: 0;
-    clip-path: inset(1.5% 1% round 26px);
-    background:
-      linear-gradient(158deg,
-        oklch(0.95 0.11 122) 0%,
-        oklch(0.90 0.16 124) 38%,
-        oklch(0.76 0.18 128) 100%);
-  }
-  /* The crisp image, clipped to a clean rounded rect a touch INSIDE the ragged
-     dark hole — so a thin torn dark border shows around it and the screenshot
-     itself never gets warped by the edge filter. */
-  .tear-img {
-    position: absolute; inset: 0;
-    clip-path: inset(6% 4% round 16px);
-    overflow: hidden;
-  }
-  .tear-img > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-
-  /* Panel mode — ragged dark hole BEHIND crisp normal-flow content (text stays
-     legible). Height comes from the content; the torn layers overlay it. */
-  .tear-frame--panel { position: relative; }
-  .tear-frame--panel .tear-paper { position: absolute; inset: 0; }
-  .tear-holebg {
-    position: absolute; inset: 0;
-    clip-path: inset(2.5% 1.5% round 26px);
-    background:
-      radial-gradient(120% 100% at 50% 0%, oklch(0.18 0.02 158 / 0.55), transparent 60%),
-      oklch(0.12 0.006 250);
-    box-shadow:
-      inset 0 24px 40px -16px oklch(0 0 0 / 0.85),
-      inset 16px 0 40px -22px oklch(0 0 0 / 0.6),
-      inset -16px 0 40px -22px oklch(0 0 0 / 0.6);
-  }
-  .tear-content { position: relative; }
 
   /* Full-bleed background orbs (OrbsBackground). */
   .orb {
