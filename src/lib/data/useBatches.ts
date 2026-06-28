@@ -42,6 +42,9 @@ export function useBatches() {
  *   1) ingest-submit `create`  → signed upload URL (server owns the path)
  *   2) Storage uploadToSignedUrl → the file bytes go straight to Storage
  *   3) ingest-submit `finalize` → server hashes + calls submit_batch (the gate)
+ *   4) process_uploaded_rows     → stage the client-parsed rows + run the real
+ *      transform/z-score so the batch reaches awaiting_review with no worker.
+ *      (Pass `rows` for CSV; omit for XLSX, which still needs the worker.)
  */
 export function useUploadBatch() {
   const qc = useQueryClient()
@@ -50,6 +53,7 @@ export function useUploadBatch() {
       entityId: string
       period: string
       file: File
+      rows?: unknown[] | null
     }) => {
       const fileName = args.file.name
 
@@ -77,8 +81,26 @@ export function useUploadBatch() {
           period: args.period,
         },
       })
-      if (finalized.error) throw new Error(await humanize(finalized.error))
-      return finalized.data as { status?: string; batch_id?: string }
+      if (finalized.error) {
+        // A 409 "duplicate" is a non-2xx, so it lands here — but it's not a crash.
+        // Read the body and surface it as a normal duplicate result.
+        const body = await readBody(finalized.error)
+        if (body?.status === "duplicate") {
+          return { status: "duplicate", batch_id: body.batch_id as string | undefined }
+        }
+        throw new Error(body?.error ? String(body.error) : await humanize(finalized.error))
+      }
+      const result = finalized.data as { status?: string; batch_id?: string }
+
+      // Stage + validate + z-score the parsed rows right away (no worker needed).
+      if (result?.batch_id && result.status !== "duplicate" && args.rows && args.rows.length) {
+        const { error } = await supabase.rpc("process_uploaded_rows", {
+          p_batch_id: result.batch_id,
+          p_rows: args.rows,
+        })
+        if (error) throw new Error(error.message)
+      }
+      return result
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["ingest_batches"] })
@@ -108,18 +130,52 @@ export function useApproveBatch() {
   })
 }
 
-/** supabase functions.invoke wraps a non-2xx response in a FunctionsHttpError
- *  whose context is the Response; read the server's JSON `error` for a real
- *  message (e.g. submit_batch's 403/duplicate), else fall back to generic text. */
-async function humanize(error: unknown): Promise<string> {
+/** Read the JSON body of a FunctionsHttpError's Response (the edge fn's payload),
+ *  e.g. { status: "duplicate", batch_id } or { error: "..." }. */
+async function readBody(error: unknown): Promise<Record<string, unknown> | null> {
   const ctx = (error as { context?: Response })?.context
   if (ctx && typeof ctx.json === "function") {
-    try {
-      const body = await ctx.json()
-      if (body?.error) return String(body.error)
-    } catch {
-      /* not JSON — fall through */
-    }
+    try { return await ctx.json() } catch { /* not JSON */ }
   }
+  return null
+}
+
+/** Human message from a FunctionsHttpError, preferring the server's JSON `error`. */
+async function humanize(error: unknown): Promise<string> {
+  const body = await readBody(error)
+  if (body?.error) return String(body.error)
   return error instanceof Error ? error.message : "upload failed"
+}
+
+// ---- Batch detail: the staging rows behind a batch (why it did/didn't pass) ---
+export interface StagingRowView {
+  id: number
+  row_num: number
+  account_code: string | null
+  txn_date: string | null
+  description: string | null
+  debit: number | null
+  credit: number | null
+  currency: string | null
+  validation_errors: { field: string; error: string }[] | null
+  is_anomaly: boolean
+  anomaly_reason: string | null
+  z_score: number | null
+}
+
+/** Rows of one batch (RLS: manager/admin of the entity can read journal_staging). */
+export function useBatchRows(batchId: string | null) {
+  return useQuery({
+    queryKey: ["batch_rows", batchId ?? "none"],
+    enabled: Boolean(batchId),
+    queryFn: async (): Promise<StagingRowView[]> => {
+      const { data, error } = await supabase
+        .from("journal_staging")
+        .select("id,row_num,account_code,txn_date,description,debit,credit,currency,validation_errors,is_anomaly,anomaly_reason,z_score")
+        .eq("batch_id", batchId)
+        .order("row_num")
+      if (error) throw error
+      return (data ?? []) as StagingRowView[]
+    },
+  })
 }

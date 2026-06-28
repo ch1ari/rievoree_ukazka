@@ -7,10 +7,9 @@ import { monthlyPnl, expenseByAccount, executiveSeries, executiveKpis, type Kpi 
 import { ChartCard, PnlTrend, ExpenseTreemap, RevenueMarginCombo, Sparkline, COLORS } from "@/components/charts/FinancialCharts"
 import { CountUp } from "@/components/CountUp"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { SimpleSelect } from "@/components/ui/select"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
-const selectClass =
-  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 export function Dashboard() {
   const { data: rows, isLoading, error } = useReport()
@@ -59,10 +58,15 @@ export function Dashboard() {
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 Entity
-                <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-                  <option value="all">All ({names.size})</option>
-                  {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-                </select>
+                <SimpleSelect
+                  aria-label="Entity filter"
+                  value={entityId}
+                  onValueChange={setEntityId}
+                  options={[
+                    { value: "all", label: `All (${names.size})` },
+                    ...[...names.entries()].map(([id, name]) => ({ value: id, label: name })),
+                  ]}
+                />
               </label>
             </div>
           )}

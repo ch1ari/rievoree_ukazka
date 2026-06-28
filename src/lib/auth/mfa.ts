@@ -12,8 +12,9 @@ function msg(e: unknown): string | null {
 }
 
 /** Create an account; full_name rides in user metadata. The DB trigger creates the
- *  profile (viewer) + sample-entity membership. needsConfirmation=true when email
- *  confirmations are on (no session yet → can't enrol 2FA until confirmed/signed in). */
+ *  profile (viewer). The caller then runs provisionAccount() to pick a role + a
+ *  personal sandbox. needsConfirmation=true when email confirmations are on (no
+ *  session yet → can't enrol 2FA / provision until confirmed/signed in). */
 export async function signUpWithProfile(email: string, password: string, fullName: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -21,6 +22,42 @@ export async function signUpWithProfile(email: string, password: string, fullNam
     options: { data: { full_name: fullName } },
   })
   return { needsConfirmation: !error && !data.session, error: msg(error) }
+}
+
+export type ProvisionMode = "demo" | "own"
+// Self-registered users may be viewer/manager/admin. Crucially, admin is SCOPED:
+// private.is_admin() is global only for platform accounts that own no sandbox, so
+// a registered admin sees/approves ONLY their own entities (RLS, migration 27) —
+// the showcase tenants are never visible to them.
+export type SwitchableRole = "viewer" | "manager" | "admin"
+
+/** Post-signup setup: set the chosen role and build a personal sandbox — a clone
+ *  of the demo data ('demo') or an empty workspace ('own'). Server-side RPC. */
+export async function provisionAccount(mode: ProvisionMode, role: SwitchableRole) {
+  const { error } = await supabase.rpc("provision_account", { p_mode: mode, p_role: role })
+  return { error: msg(error) }
+}
+
+/** Flip the current user's role live (only inside their own sandbox). */
+export async function setMyRole(role: SwitchableRole) {
+  const { error } = await supabase.rpc("set_my_role", { p_role: role })
+  return { error: msg(error) }
+}
+
+/** Create an additional personal entity (clone of the demo data or empty). */
+export async function createMyEntity(name: string, mode: ProvisionMode) {
+  const { error } = await supabase.rpc("create_my_entity", { p_name: name, p_mode: mode })
+  return { error: msg(error) }
+}
+
+export async function renameMyEntity(entityId: string, name: string) {
+  const { error } = await supabase.rpc("rename_my_entity", { p_entity_id: entityId, p_name: name })
+  return { error: msg(error) }
+}
+
+export async function deleteMyEntity(entityId: string) {
+  const { error } = await supabase.rpc("delete_my_entity", { p_entity_id: entityId })
+  return { error: msg(error) }
 }
 
 /** Begin TOTP enrolment; returns the QR (SVG markup, not an external image) + secret. */

@@ -7,11 +7,10 @@ import { useReport } from "@/lib/data/useReport"
 import { useEntities } from "@/lib/data/useEntities"
 import { buildPivot, DIM_LABEL, MEASURE_LABEL, type Dim, type Measure } from "@/lib/data/pivot"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { SimpleSelect } from "@/components/ui/select"
 
 const DIMS: Dim[] = ["entity", "type", "account", "period"]
 const MEASURES: Measure[] = ["net", "debit", "credit"]
-const selectClass =
-  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 // Compact money with accounting parentheses.
 function cmp(n: number) {
@@ -83,9 +82,12 @@ export function Pivot() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Rows
-              <select className={selectClass} value={rowDim} onChange={(e) => setRow(e.target.value as Dim)}>
-                {DIMS.map((d) => <option key={d} value={d}>{DIM_LABEL[d]}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Row dimension"
+                value={rowDim}
+                onValueChange={(v) => setRow(v as Dim)}
+                options={DIMS.map((d) => ({ value: d, label: DIM_LABEL[d] }))}
+              />
             </label>
             <button onClick={swap} aria-label="Swap rows and columns"
               className="rounded-lg border border-border p-2 text-muted-foreground transition hover:border-accent hover:text-accent">
@@ -93,15 +95,21 @@ export function Pivot() {
             </button>
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Columns
-              <select className={selectClass} value={colDim} onChange={(e) => setCol(e.target.value as Dim)}>
-                {DIMS.map((d) => <option key={d} value={d}>{DIM_LABEL[d]}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Column dimension"
+                value={colDim}
+                onValueChange={(v) => setCol(v as Dim)}
+                options={DIMS.map((d) => ({ value: d, label: DIM_LABEL[d] }))}
+              />
             </label>
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Measure
-              <select className={selectClass} value={measure} onChange={(e) => setMeasure(e.target.value as Measure)}>
-                {MEASURES.map((m) => <option key={m} value={m}>{MEASURE_LABEL[m]}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Measure"
+                value={measure}
+                onValueChange={(v) => setMeasure(v as Measure)}
+                options={MEASURES.map((m) => ({ value: m, label: MEASURE_LABEL[m] }))}
+              />
             </label>
           </div>
 

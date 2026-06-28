@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useCallback, useEffect, useState, type ReactNode } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 
@@ -20,6 +20,8 @@ interface AuthState {
   user: User | null
   role: string | null
   loading: boolean
+  /** Re-read the caller's role from profiles — call after a live role switch. */
+  refreshRole: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthState>({
@@ -27,6 +29,7 @@ export const AuthContext = createContext<AuthState>({
   user: null,
   role: null,
   loading: true,
+  refreshRole: async () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -59,30 +62,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Resolve the caller's role from profiles (RLS: a user can read their own row).
-  // Drives the "acting as <role>" label; re-runs whenever the identity changes.
-  useEffect(() => {
-    const uid = session?.user?.id
+  const uid = session?.user?.id
+  const loadRole = useCallback(async () => {
     if (!uid) {
       setRole(null)
       return
     }
-    let active = true
-    supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", uid)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active) setRole((data?.role as string | undefined) ?? null)
-      })
-    return () => {
-      active = false
-    }
-  }, [session?.user?.id])
+    const { data } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle()
+    setRole((data?.role as string | undefined) ?? null)
+  }, [uid])
+
+  // Drives the "acting as <role>" label; re-runs whenever the identity changes.
+  useEffect(() => {
+    void loadRole()
+  }, [loadRole])
 
   return (
     <AuthContext.Provider
-      value={{ session, user: session?.user ?? null, role, loading }}
+      value={{ session, user: session?.user ?? null, role, loading, refreshRole: loadRole }}
     >
       {children}
     </AuthContext.Provider>

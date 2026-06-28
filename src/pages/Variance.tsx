@@ -7,11 +7,10 @@ import { useBudget } from "@/lib/data/useBudget"
 import { buildVarianceBridge, type Basis } from "@/lib/data/variance"
 import { ChartCard, Waterfall } from "@/components/charts/FinancialCharts"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { SimpleSelect } from "@/components/ui/select"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
 const money = (n: number) => (n < 0 ? `(${eur.format(Math.abs(n))})` : eur.format(n))
-const selectClass =
-  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 export function Variance() {
   const { data: rows, isLoading, error } = useReport()
@@ -57,16 +56,24 @@ export function Variance() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Entity
-              <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-                <option value="all">All ({names.size})</option>
-                {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Entity filter"
+                value={entityId}
+                onValueChange={setEntityId}
+                options={[
+                  { value: "all", label: `All (${names.size})` },
+                  ...[...names.entries()].map(([id, name]) => ({ value: id, label: name })),
+                ]}
+              />
             </label>
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Period
-              <select className={selectClass} value={periodKey} onChange={(e) => setPeriod(e.target.value)}>
-                {[...periodsAsc].reverse().map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Period filter"
+                value={periodKey}
+                onValueChange={setPeriod}
+                options={[...periodsAsc].reverse().map((p) => ({ value: p, label: p }))}
+              />
             </label>
             {/* Basis toggle */}
             <div className="inline-flex overflow-hidden rounded-lg border border-border">

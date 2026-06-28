@@ -7,11 +7,10 @@ import { useEntities } from "@/lib/data/useEntities"
 import { buildBalanceSheet, cashFlowSteps, type BsLine } from "@/lib/data/balance"
 import { ChartCard, Waterfall } from "@/components/charts/FinancialCharts"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { SimpleSelect } from "@/components/ui/select"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
 const money = (n: number) => (n < 0 ? `(${eur.format(Math.abs(n))})` : eur.format(n))
-const selectClass =
-  "rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-xs uppercase tracking-wider outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
 
 export function Balance() {
   const { data: rows, isLoading, error } = useReport()
@@ -46,10 +45,15 @@ export function Balance() {
           <div className="flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Entity
-              <select className={selectClass} value={entityId} onChange={(e) => setEntityId(e.target.value)}>
-                <option value="all">All ({names.size})</option>
-                {[...names.entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-              </select>
+              <SimpleSelect
+                aria-label="Entity filter"
+                value={entityId}
+                onValueChange={setEntityId}
+                options={[
+                  { value: "all", label: `All (${names.size})` },
+                  ...[...names.entries()].map(([id, name]) => ({ value: id, label: name })),
+                ]}
+              />
             </label>
             <span className={cn("ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest",
               balanced ? "bg-accent/12 text-accent ring-1 ring-accent/30" : "bg-destructive/15 text-destructive ring-1 ring-destructive/40")}>

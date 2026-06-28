@@ -122,9 +122,11 @@ export function Landing() {
               </motion.p>
             </div>
 
-            {/* RIGHT — a torn hole in the paper; the dark machinery glows through.
-                The whole hole is CLICKABLE → toggles the full-page X-ray reveal. */}
-            <motion.div className="min-w-0" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+            {/* RIGHT — the paper torn open at the page's right edge; the dark
+                machinery glows through. Negative right margin cancels the section
+                padding so the tear bleeds to the viewport edge (anchored, not a
+                floating square). The whole hole is CLICKABLE → full-page X-ray. */}
+            <motion.div className="min-w-0 -mr-6 md:-mr-12 lg:-mr-16" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}>
               <PageTear />
             </motion.div>
