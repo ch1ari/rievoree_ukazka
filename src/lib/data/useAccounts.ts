@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth/useAuth"
+import { skAccountType } from "./skChart"
 
 export type AccountType = "asset" | "liability" | "equity" | "revenue" | "expense"
 
@@ -19,20 +20,11 @@ export const ACCOUNT_TYPES: { value: AccountType; label: string }[] = [
 ]
 
 /**
- * Guess an account's type from its code's leading digit — a convenience default
- * the user confirms/overrides. Tuned for SK/CZ charts (1–2 assets, 3 payables,
- * 4 capital, 5 expenses, 6 revenue); harmless elsewhere since it's editable.
+ * Guess an account's type — delegates to the Slovak "rámcová účtová osnova"
+ * mapping (by class/group). A convenience default the user can override.
  */
 export function guessAccountType(code: string): AccountType {
-  switch ((code.trim()[0] ?? "")) {
-    case "1":
-    case "2": return "asset"
-    case "3": return "liability"
-    case "4": return "equity"
-    case "5": return "expense"
-    case "6": return "revenue"
-    default: return "expense"
-  }
+  return skAccountType(code)
 }
 
 /** The chart of accounts for an entity (RLS: members can read). */

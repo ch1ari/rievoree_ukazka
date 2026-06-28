@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ListPlus } from "lucide-react"
+import { ListPlus, Wand2 } from "lucide-react"
 import { SimpleSelect } from "@/components/ui/select"
 import { ACCOUNT_TYPES, guessAccountType, type Account, type AccountType } from "@/lib/data/useAccounts"
 
@@ -24,21 +24,29 @@ export function ClassifyAccounts({
   function set(code: string, patch: Partial<{ name: string; type: AccountType }>) {
     setRows((r) => ({ ...r, [code]: { ...r[code], ...patch } }))
   }
+  function autoMap() {
+    setRows((r) => Object.fromEntries(codes.map((c) => [c, { ...r[c], type: guessAccountType(c) }])))
+  }
   function confirm() {
     onConfirm(codes.map((c) => ({ code: c, name: rows[c].name.trim() || c, type: rows[c].type })))
   }
 
   return (
     <div className="mt-4 rounded-[1.5rem] border border-accent/40 bg-accent/[0.06] p-6">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <ListPlus className="size-4 text-accent" />
         <h3 className="font-mono text-xs uppercase tracking-widest text-accent">
           New accounts in this file ({codes.length})
         </h3>
+        <button type="button" onClick={autoMap} disabled={busy}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-accent/50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-accent transition hover:bg-accent/10">
+          <Wand2 className="size-3.5" /> Auto-map (SK chart)
+        </button>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        These account codes aren't in your chart yet. Give each a type (we guessed from
-        the code — change if needed), then we'll add them and continue the upload.
+        Types are auto-set from the Slovak chart of accounts (rámcová účtová osnova) —
+        by account class. Check them, change any if needed, then we'll add the accounts
+        and continue the upload.
       </p>
 
       <div className="mt-4 space-y-2">
