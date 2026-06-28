@@ -11,6 +11,7 @@ import { Ingest } from "@/pages/Ingest"
 import { Landing } from "@/pages/Landing"
 import { Login } from "@/pages/Login"
 import { Register } from "@/pages/Register"
+import { ResetPassword } from "@/pages/ResetPassword"
 import { About } from "@/pages/About"
 import { Reports } from "@/pages/Reports"
 import { Pl } from "@/pages/Pl"
@@ -38,6 +39,7 @@ const routes = [
     }),
   }),
   createRoute({ getParentRoute: () => rootRoute, path: "/register", component: Register }),
+  createRoute({ getParentRoute: () => rootRoute, path: "/reset-password", component: ResetPassword }),
   createRoute({ getParentRoute: () => rootRoute, path: "/about", component: About }),
   createRoute({ getParentRoute: () => rootRoute, path: "/dashboard", component: Dashboard }),
   createRoute({ getParentRoute: () => rootRoute, path: "/ingest", component: Ingest }),
