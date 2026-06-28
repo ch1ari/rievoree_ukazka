@@ -43,15 +43,21 @@ export function PageTear() {
           the clipped depth's alpha into organic paper fibre (applied via CSS to the
           parent of the clipped layer, so it tears the clip edge, not a sawtooth). */}
       <svg className="rip-filter-def" width="0" height="0" aria-hidden="true" focusable="false">
-        <filter id="rip-torn" x="-15%" y="-15%" width="130%" height="130%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.011 0.015" numOctaves="4" seed="17" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="34" xChannelSelector="R" yChannelSelector="G" />
+        <filter id="rip-torn" x="-25%" y="-25%" width="150%" height="150%">
+          {/* Two-octave-rich noise + a bigger displacement = a more violently
+              hand-torn, fibrous edge (coarse rips with fine fray riding on top). */}
+          <feTurbulence type="fractalNoise" baseFrequency="0.013 0.024" numOctaves="6" seed="11" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="62" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
 
       <div className="rip-scene">
         {/* THE DARK DEPTH — the filter on this parent tears the clipped inner edge. */}
         <div className="rip-depth">
+          {/* The torn paper's THICKNESS: a lighter-lime underside, clipped slightly
+              larger than the hole so a ragged rim peeks around the dark — the page
+              reads as a real sheet ripped open, not a flat cut-out. */}
+          <div className="rip-lip" aria-hidden="true" />
           <div className="rip-depth-inner">
             {/* A slice of the real source — reads like the X-ray editor pane. */}
             <div className="rip-code" aria-hidden="true">
