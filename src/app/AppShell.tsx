@@ -10,7 +10,10 @@ import { useAuth } from "@/lib/auth/useAuth"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
-const navLinkBase = "rounded-full px-3.5 py-2 font-mono text-xs uppercase tracking-widest transition-colors"
+const navLinkBase = "rounded-full px-3 py-2 font-mono text-xs uppercase tracking-widest transition-colors"
+// Compact variant for the 11-item signed-in product nav, so the whole row fits
+// the bar without forcing a horizontal page scroll.
+const navLinkCompact = "rounded-full px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-wide transition-colors"
 const navLinkActive = "bg-accent/12 text-accent"
 const navLinkIdle = "text-muted-foreground hover:bg-secondary hover:text-foreground"
 
@@ -89,48 +92,57 @@ export function AppShell() {
   // The signed-in flag for chrome purposes EXCLUDES the demo tour.
   const realUser = !!session && !isDemo
 
+  // The signed-in product nav has 11 items, so its bar needs more room and a
+  // higher "collapse to menu" breakpoint than the lean demo/anon navs — otherwise
+  // the row overflows and the whole page scrolls sideways.
+  const headerMax = realUser ? "max-w-7xl" : "max-w-6xl"
+
   return (
-    <div className={cn("flex min-h-screen flex-col", onPaper && "paper")}>
+    // overflow-x-clip: a hard guarantee the page never scrolls sideways (clip
+    // doesn't create a scroll container, so the sticky header still works).
+    <div className={cn("flex min-h-screen flex-col overflow-x-clip", onPaper && "paper")}>
       {onPaper ? <PaperBackground /> : <OrbsBackground subtle />}
 
       <header className={onPaper
         ? "sticky top-0 z-40"
         : "sticky top-0 z-40 border-b border-border bg-background/75 shadow-soft backdrop-blur-lg"}>
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-6">
+        <div className={cn("mx-auto flex h-16 items-center justify-between gap-4 px-6", headerMax)}>
           <Link to="/" className="text-xl font-semibold tracking-tight">
             X-RAY<span className={onPaper ? "text-accent" : "bg-gradient-to-r from-accent to-signal bg-clip-text text-transparent"}>/</span>
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
-            {realUser
-              ? NAV.map((item) => (
-                  <Link key={item.to} to={item.to} className={navLinkBase}
-                    activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
-                    {item.label}
-                  </Link>
-                ))
-              : isDemo
-              ? SHOWCASE.map((item) => (
-                  <Link key={item.to} to={item.to} className={navLinkBase}
-                    activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
-                    {item.label}
-                  </Link>
-                ))
-              : (
-                <>
-                  <button onClick={exploreDemo} className={`${navLinkBase} ${navLinkIdle}`}>Demo</button>
-                  <Link to="/about" className={navLinkBase}
-                    activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>O nás</Link>
-                  <Link to="/login" className={`${navLinkBase} ${navLinkIdle}`}>Prihlásiť</Link>
-                </>
-              )}
-          </nav>
+          {realUser ? (
+            <nav className="hidden items-center gap-0.5 xl:flex">
+              {NAV.map((item) => (
+                <Link key={item.to} to={item.to} className={navLinkCompact}
+                  activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          ) : isDemo ? (
+            <nav className="hidden items-center gap-1 lg:flex">
+              {SHOWCASE.map((item) => (
+                <Link key={item.to} to={item.to} className={navLinkBase}
+                  activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          ) : (
+            <nav className="hidden items-center gap-1 md:flex">
+              <button onClick={exploreDemo} className={`${navLinkBase} ${navLinkIdle}`}>Demo</button>
+              <Link to="/about" className={navLinkBase}
+                activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>O nás</Link>
+              <Link to="/login" className={`${navLinkBase} ${navLinkIdle}`}>Prihlásiť</Link>
+            </nav>
+          )}
 
           <div className="flex items-center gap-2.5">
             <XRayPanel />
-            {realUser && <div className="hidden md:block"><ActingAs label={role ?? session.user.email ?? "signed in"} /></div>}
+            {realUser && <div className="hidden xl:block"><ActingAs label={role ?? session.user.email ?? "signed in"} /></div>}
             {isDemo && (
-              <div className="hidden items-center gap-2 md:flex">
+              <div className="hidden items-center gap-2 lg:flex">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground ring-1 ring-border">
                   <ScanLine className="size-3" strokeWidth={2.25} /> Demo · read-only
                 </span>
@@ -140,7 +152,7 @@ export function AppShell() {
                 <button onClick={exitDemo} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground">Exit</button>
               </div>
             )}
-            <div className="md:hidden">
+            <div className={realUser ? "xl:hidden" : isDemo ? "lg:hidden" : "md:hidden"}>
               <MobileNav mode={realUser ? "user" : isDemo ? "demo" : "anon"}
                 identity={role ?? session?.user.email ?? "signed in"} onDemo={exploreDemo} onExitDemo={exitDemo} />
             </div>

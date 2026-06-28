@@ -68,8 +68,11 @@ export function Landing() {
         <div className="mx-auto max-w-[2400px]">
           {/* Split hero — headline + pitch + CTA LEFT; a torn hole in the paper
               RIGHT, filling the freed space and exposing the dark machinery. */}
-          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-            <div className="min-w-0 max-w-2xl">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+            {/* No max-width cap here — the oversized "MACHINERY" headline must use
+                the full left column so it never wraps mid-word. The pitch, CTAs and
+                note below carry their own narrower caps for readability. */}
+            <div className="min-w-0">
               {/* #region xray */}
               <h1 className="display uppercase text-foreground">
                 <span className="block overflow-hidden pb-[0.06em]">
@@ -81,7 +84,7 @@ export function Landing() {
                 <span className="block overflow-hidden pb-[0.04em]">
                   {/* Per-letter reveal — each glyph slides up on load (masked by the
                       overflow-hidden line). reducedMotion="user" disables it. */}
-                  <span className="stencil ignite block text-[clamp(2.25rem,8.5vw,9rem)] leading-[0.85] text-accent" aria-label="Machinery">
+                  <span className="stencil ignite block text-[clamp(2.25rem,7.5vw,9rem)] leading-[0.85] text-accent" aria-label="Machinery">
                     {"Machinery".split("").map((ch, i) => (
                       <motion.span key={i} className="inline-block" aria-hidden initial={{ y: "120%" }} animate={{ y: 0 }}
                         transition={{ duration: 0.7, delay: 0.18 + i * 0.045, ease: [0.22, 0.7, 0.2, 1] }}>
