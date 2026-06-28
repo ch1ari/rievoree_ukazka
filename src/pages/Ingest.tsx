@@ -19,7 +19,7 @@ import { useEntities } from "@/lib/data/useEntities"
 import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatches"
 import { useEntityRuleset, useSaveRuleset, DEFAULT_RULES } from "@/lib/data/useRuleset"
 import { useEntityAccounts, useUpsertAccounts, type Account } from "@/lib/data/useAccounts"
-import { parseCsvToRows, type StagingRow } from "@/lib/data/parseCsv"
+import { parseCsvToRows, type StagingRow, type AmountMode } from "@/lib/data/parseCsv"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 import { IngestRules } from "@/components/IngestRules"
 import { IngestMapping } from "@/components/IngestMapping"
@@ -65,6 +65,7 @@ export function Ingest() {
   const [period, setPeriod] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [mapping, setMapping] = useState<Record<string, string[]> | null>(null)
+  const [amountMode, setAmountMode] = useState<AmountMode | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [pending, setPending] = useState<{ rows: StagingRow[]; codes: string[]; period: string } | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
@@ -81,7 +82,7 @@ export function Ingest() {
     if (!file) return
     upload.mutate(
       { entityId, period: `${p}-01`, file, rows },
-      { onSuccess: (data) => { if ((data as { status?: string })?.status === "created") { setFile(null); setMapping(null) } } },
+      { onSuccess: (data) => { if ((data as { status?: string })?.status === "created") { setFile(null); setMapping(null); setAmountMode(null) } } },
     )
     setPending(null)
   }
@@ -108,7 +109,11 @@ export function Ingest() {
     // abort the upload if that publish fails.
     if (mapping && eff.data) {
       try {
-        await saveRules.mutateAsync({ ...eff.data.rules, header_aliases: aliases })
+        await saveRules.mutateAsync({
+          ...eff.data.rules,
+          header_aliases: aliases,
+          amount_mode: amountMode ?? eff.data.rules.amount_mode,
+        })
       } catch { return }
     }
 
@@ -117,7 +122,7 @@ export function Ingest() {
 
     // Parse CSV in the browser → typed rows for process_uploaded_rows.
     const text = await file.text()
-    const rows = parseCsvToRows(text, aliases, rules.date_formats, rules.amount_mode).rows
+    const rows = parseCsvToRows(text, aliases, rules.date_formats, amountMode ?? rules.amount_mode).rows
 
     // Required columns must be mappable, else every row errors. Force mapping first.
     if (rows.length && rows.every((r) => !r.account_code)) {
@@ -197,7 +202,7 @@ export function Ingest() {
         </Button>
 
         {/* Column mapping (CSV) — folds open once a file is chosen. */}
-        <IngestMapping file={file} rules={eff.data?.rules} onChange={setMapping} />
+        <IngestMapping file={file} rules={eff.data?.rules} onChange={setMapping} onAmountMode={setAmountMode} />
 
         {mapError && (
           <p role="alert" className="font-mono text-xs text-destructive md:col-span-4">

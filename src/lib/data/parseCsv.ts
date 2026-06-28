@@ -21,7 +21,8 @@ export type AmountMode = "split" | "signed"
 
 // Minimal CSV line splitter — handles double-quoted fields with embedded commas
 // and escaped quotes (""). Good enough for the accounting exports this app takes.
-function splitLine(line: string): string[] {
+// Exported so the column mapper can show real sample values per column.
+export function splitLine(line: string): string[] {
   const out: string[] = []
   let cur = ""
   let inQuotes = false
