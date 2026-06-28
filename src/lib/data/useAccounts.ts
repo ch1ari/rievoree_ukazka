@@ -27,6 +27,20 @@ export function guessAccountType(code: string): AccountType {
   return skAccountType(code)
 }
 
+/**
+ * Auto-classify codes via the classify-accounts edge function (SK chart), with a
+ * local fallback if the function isn't deployed / errors — so the button always
+ * works. Returns code → type.
+ */
+export async function classifyAccountsRemote(codes: string[]): Promise<Record<string, AccountType>> {
+  try {
+    const { data, error } = await supabase.functions.invoke("classify-accounts", { body: { codes } })
+    const mapping = (data as { mapping?: Record<string, AccountType> } | null)?.mapping
+    if (!error && mapping) return mapping
+  } catch { /* fall back to local mapping below */ }
+  return Object.fromEntries(codes.map((c) => [c, skAccountType(c)]))
+}
+
 /** The chart of accounts for an entity (RLS: members can read). */
 export function useEntityAccounts(entityId: string | undefined) {
   const { user } = useAuth()

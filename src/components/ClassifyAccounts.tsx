@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { ListPlus, Wand2 } from "lucide-react"
 import { SimpleSelect } from "@/components/ui/select"
-import { ACCOUNT_TYPES, guessAccountType, type Account, type AccountType } from "@/lib/data/useAccounts"
+import { ACCOUNT_TYPES, guessAccountType, classifyAccountsRemote, type Account, type AccountType } from "@/lib/data/useAccounts"
 
 /**
  * Shown when an upload contains account codes not yet in the entity's chart. The
@@ -20,12 +20,18 @@ export function ClassifyAccounts({
   const [rows, setRows] = useState<Record<string, { name: string; type: AccountType }>>(
     () => Object.fromEntries(codes.map((c) => [c, { name: "", type: guessAccountType(c) }])),
   )
+  const [mapping, setMapping] = useState(false)
+  const [mapped, setMapped] = useState(false)
 
   function set(code: string, patch: Partial<{ name: string; type: AccountType }>) {
     setRows((r) => ({ ...r, [code]: { ...r[code], ...patch } }))
+    setMapped(false)
   }
-  function autoMap() {
-    setRows((r) => Object.fromEntries(codes.map((c) => [c, { ...r[c], type: guessAccountType(c) }])))
+  async function autoMap() {
+    setMapping(true); setMapped(false)
+    const m = await classifyAccountsRemote(codes)
+    setRows((r) => Object.fromEntries(codes.map((c) => [c, { ...r[c], type: m[c] ?? guessAccountType(c) }])))
+    setMapping(false); setMapped(true)
   }
   function confirm() {
     onConfirm(codes.map((c) => ({ code: c, name: rows[c].name.trim() || c, type: rows[c].type })))
@@ -38,9 +44,10 @@ export function ClassifyAccounts({
         <h3 className="font-mono text-xs uppercase tracking-widest text-accent">
           New accounts in this file ({codes.length})
         </h3>
-        <button type="button" onClick={autoMap} disabled={busy}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-accent/50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-accent transition hover:bg-accent/10">
-          <Wand2 className="size-3.5" /> Auto-map (SK chart)
+        <button type="button" onClick={autoMap} disabled={busy || mapping}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-accent/50 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-accent transition hover:bg-accent/10 disabled:opacity-60">
+          <Wand2 className="size-3.5" />
+          {mapping ? "Mapping…" : mapped ? "✓ Mapped" : "Auto-map (SK chart)"}
         </button>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
