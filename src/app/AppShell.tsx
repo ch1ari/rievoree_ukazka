@@ -17,6 +17,9 @@ const navLinkIdle = "text-muted-foreground hover:bg-secondary hover:text-foregro
 const DEMO_EMAIL = "demo@demo.local"
 
 // Full product nav — only for a real signed-in account (not the demo tour).
+// `roles` (when present) restricts a link to those roles; absent = everyone.
+const MANAGER_ROLES = ["manager", "admin", "super_admin"]
+const ADMIN_ROLES = ["admin", "super_admin"]
 const NAV = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/pl", label: "P&L" },
@@ -26,10 +29,15 @@ const NAV = [
   { to: "/aging", label: "Aging" },
   { to: "/reports", label: "Reports" },
   { to: "/ingest", label: "Ingest" },
-  { to: "/connectors", label: "Connectors" },
-  { to: "/users", label: "Users" },
+  { to: "/connectors", label: "Connectors", roles: MANAGER_ROLES },
+  { to: "/users", label: "Users", roles: ADMIN_ROLES },
   { to: "/account", label: "Account" },
 ] as const
+
+// The nav a given role may see (Connectors → managers+, Users → admins).
+function navFor(role: string | null) {
+  return NAV.filter((item) => !("roles" in item) || (item.roles as readonly string[]).includes(role ?? ""))
+}
 
 // Demo "tour" nav — read-only analytics only. NO Ingest / Users / Account.
 const SHOWCASE = [
@@ -103,7 +111,7 @@ export function AppShell() {
 
           <nav className="hidden items-center gap-1 md:flex">
             {realUser
-              ? NAV.map((item) => (
+              ? navFor(role).map((item) => (
                   <Link key={item.to} to={item.to} className={navLinkBase}
                     activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>
                     {item.label}
@@ -141,7 +149,7 @@ export function AppShell() {
               </div>
             )}
             <div className="md:hidden">
-              <MobileNav mode={realUser ? "user" : isDemo ? "demo" : "anon"}
+              <MobileNav mode={realUser ? "user" : isDemo ? "demo" : "anon"} navItems={navFor(role)}
                 identity={role ?? session?.user.email ?? "signed in"} onDemo={exploreDemo} onExitDemo={exitDemo} />
             </div>
           </div>
@@ -176,7 +184,7 @@ export function AppShell() {
   )
 }
 
-function MobileNav({ mode, identity, onDemo, onExitDemo }: { mode: "user" | "demo" | "anon"; identity: string; onDemo: () => void; onExitDemo: () => void }) {
+function MobileNav({ mode, navItems, identity, onDemo, onExitDemo }: { mode: "user" | "demo" | "anon"; navItems: readonly { to: string; label: string }[]; identity: string; onDemo: () => void; onExitDemo: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -192,7 +200,7 @@ function MobileNav({ mode, identity, onDemo, onExitDemo }: { mode: "user" | "dem
           </SheetTitle>
         </SheetHeader>
         <nav className="flex flex-1 flex-col gap-1 px-3 py-2">
-          {mode === "user" && NAV.map((item) => (
+          {mode === "user" && navItems.map((item) => (
             <Link key={item.to} to={item.to} onClick={() => setOpen(false)}
               className="rounded-xl px-4 py-3 font-mono text-sm uppercase tracking-widest transition-colors"
               activeProps={{ className: navLinkActive }} inactiveProps={{ className: navLinkIdle }}>

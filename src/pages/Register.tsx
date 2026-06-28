@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate, Link } from "@tanstack/react-router"
 import { AuthShell } from "@/components/auth/AuthShell"
 import { TwoFactorEnroll } from "@/components/auth/TwoFactorEnroll"
+import { OAuthButtons } from "@/components/auth/OAuthButtons"
 import { SimpleSelect } from "@/components/ui/select"
 import { useAuth } from "@/lib/auth/useAuth"
 import { signUpWithProfile, provisionAccount, type ProvisionMode, type SwitchableRole } from "@/lib/auth/mfa"
@@ -107,6 +108,14 @@ export function Register() {
           {busy ? "Creating…" : "Create account"}
         </button>
       </form>
+
+      <div className="mt-5">
+        <OAuthButtons />
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          Social sign-up creates a viewer account — pick a sandbox from Account afterwards.
+        </p>
+      </div>
+
       <p className="mt-4 text-center text-sm text-muted-foreground">
         Already have an account? <Link to="/login" className="font-semibold text-foreground underline-offset-4 hover:underline">Sign in</Link>
       </p>

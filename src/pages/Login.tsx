@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router"
 import { supabase } from "@/lib/supabase"
 import { AuthShell } from "@/components/auth/AuthShell"
 import { TwoFactorChallenge } from "@/components/auth/TwoFactorChallenge"
+import { OAuthButtons } from "@/components/auth/OAuthButtons"
 import { needsMfaChallenge } from "@/lib/auth/mfa"
 
 /**
@@ -62,6 +63,10 @@ export function Login() {
           {busy ? "Entering…" : "Sign in"}
         </button>
       </form>
+
+      <div className="mt-5">
+        <OAuthButtons next={dest} />
+      </div>
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
         No account? <Link to="/register" className="font-semibold text-foreground underline-offset-4 hover:underline">Create one</Link>
