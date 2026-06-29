@@ -285,9 +285,8 @@
     object-fit: fill;
     pointer-events: none;
     -webkit-user-drag: none; user-select: none;
-    /* Only a whisper of shadow — the sheet IS the page, so it must not float. The
-       curled flaps' own baked shadows do the lifting; this just seats them. */
-    filter: drop-shadow(0 3px 6px oklch(0.30 0.10 140 / 0.40));
+    /* NO drop-shadow: the paper fades into the flat page (no outer sheet edge), so the
+       page itself reads as ripped. The curled rim's own baked shadows do all the 3D. */
   }
   /* The code reads like an editor pane glimpsed through the opening — centred in the
      hole; the parent mask crops it to the torn shape. */
