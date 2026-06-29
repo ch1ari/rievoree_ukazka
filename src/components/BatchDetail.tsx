@@ -1,8 +1,9 @@
-import { useMemo } from "react"
-import { X, Check, AlertTriangle, Ban, Scale } from "lucide-react"
+import { useMemo, useState } from "react"
+import { X, Check, AlertTriangle, Ban, Scale, Wand2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useBatchRows, type StagingRowView } from "@/lib/data/useBatches"
+import { SimpleSelect } from "@/components/ui/select"
+import { useBatchRows, useReprocessBatch, type StagingRowView } from "@/lib/data/useBatches"
 import { LoadingNote, ErrorNote } from "@/components/StateNote"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
@@ -122,6 +123,11 @@ export function BatchDetail({
             </table>
           </div>
 
+          {/* Review-time column remap — fix mis-mapped source columns (common with
+              connector/webhook data whose headers we don't control) and re-run the
+              real validation + z-score without re-uploading. */}
+          {canApprove && status === "awaiting_review" && <RemapPanel batchId={batchId} rows={rows!} />}
+
           {canApprove && status === "awaiting_review" && (
             <div className="mt-5 flex items-center gap-3">
               <Button onClick={onApprove} disabled={approving} className="font-mono">
@@ -135,6 +141,117 @@ export function BatchDetail({
         </>
       )}
     </div>
+  )
+}
+
+// The fields we can map a source column onto. txn_date + account_code are the
+// ones that, missing, error every row — so they lead.
+const REMAP_FIELDS: { key: string; label: string; aliases: string[] }[] = [
+  { key: "account_code", label: "Account code", aliases: ["account code", "account_code", "account", "code", "acct"] },
+  { key: "txn_date", label: "Date", aliases: ["txn date", "txn_date", "date", "posting date", "datum"] },
+  { key: "debit", label: "Debit", aliases: ["debit", "dr", "md"] },
+  { key: "credit", label: "Credit", aliases: ["credit", "cr", "dal"] },
+  { key: "currency", label: "Currency", aliases: ["currency", "ccy", "mena"] },
+  { key: "description", label: "Description", aliases: ["description", "desc", "memo", "popis"] },
+]
+
+function parseNumLoose(v: string): number | null {
+  const t = v.trim().replace(/\s/g, "").replace(/,(?=\d{3}\b)/g, "")
+  if (!t) return null
+  const cleaned = t.includes(",") && !t.includes(".") ? t.replace(",", ".") : t
+  return /^-?\d+(\.\d+)?$/.test(cleaned) ? Number(cleaned) : null
+}
+
+function parseDateLoose(v: string): string | null {
+  const t = v.trim()
+  if (!t) return null
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`
+  m = t.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/)        // dd.mm.yyyy or dd/mm/yyyy
+  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`
+  m = t.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})$/)
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`
+  return null
+}
+
+/** Map source columns (from each row's `raw`) onto the canonical fields and
+ *  re-stage via process_uploaded_rows — the same server path a CSV upload uses. */
+function RemapPanel({ batchId, rows }: { batchId: string; rows: StagingRowView[] }) {
+  const reprocess = useReprocessBatch()
+
+  // All source columns present across the batch's raw rows.
+  const columns = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of rows) if (r.raw) for (const k of Object.keys(r.raw)) set.add(k)
+    return [...set]
+  }, [rows])
+
+  // Initial guess: match each field's aliases against the available columns.
+  const initial = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const f of REMAP_FIELDS) {
+      const hit = columns.find((c) => f.aliases.includes(c.trim().toLowerCase()))
+      if (hit) map[f.key] = hit
+    }
+    return map
+  }, [columns])
+
+  const [map, setMap] = useState<Record<string, string>>(initial)
+  const sample = rows.find((r) => r.raw)?.raw ?? {}
+
+  if (!columns.length) return null
+
+  function apply() {
+    const built = rows.map((r) => {
+      const raw = (r.raw ?? {}) as Record<string, unknown>
+      const pick = (key: string) => (map[key] ? String(raw[map[key]] ?? "") : "")
+      return {
+        account_code: pick("account_code").trim() || null,
+        txn_date: parseDateLoose(pick("txn_date")),
+        description: pick("description").trim() || null,
+        debit: parseNumLoose(pick("debit")),
+        credit: parseNumLoose(pick("credit")),
+        currency: pick("currency").trim().toUpperCase() || null,
+        raw,
+      }
+    })
+    reprocess.mutate({ batchId, rows: built })
+  }
+
+  const options = [{ value: "", label: "— none —" }, ...columns.map((c) => ({ value: c, label: c }))]
+
+  return (
+    <details className="mt-4 rounded-xl border border-border bg-background/40 p-4 open:bg-background/60">
+      <summary className="flex cursor-pointer select-none items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+        <Wand2 className="size-3.5 text-accent" /> Remap columns
+        <span className="text-foreground/50">(fix mis-read columns &amp; re-check)</span>
+      </summary>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        Pick which source column feeds each field, then re-run validation — no re-upload.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {REMAP_FIELDS.map((f) => (
+          <label key={f.key} className="flex flex-col gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{f.label}</span>
+            <SimpleSelect size="sm" className="w-full" aria-label={f.label}
+              value={map[f.key] ?? ""} onValueChange={(v) => setMap((m) => ({ ...m, [f.key]: v }))}
+              options={options} />
+            {map[f.key] && (
+              <span className="truncate font-mono text-[10px] text-foreground/50">
+                e.g. {String((sample as Record<string, unknown>)[map[f.key]] ?? "—")}
+              </span>
+            )}
+          </label>
+        ))}
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button size="sm" className="font-mono" disabled={reprocess.isPending} onClick={apply}>
+          {reprocess.isPending ? "Re-checking…" : "Apply mapping & re-check"}
+        </Button>
+        {reprocess.isError && <span className="font-mono text-[11px] text-destructive">{(reprocess.error as Error).message}</span>}
+        {reprocess.isSuccess && <span className="font-mono text-[11px] text-accent">✓ Re-checked — see updated rows above.</span>}
+      </div>
+    </details>
   )
 }
 

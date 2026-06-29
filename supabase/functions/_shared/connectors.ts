@@ -177,7 +177,11 @@ export function parseCsv(text: string): StagingRow[] {
   const headers = splitCsvLine(lines[0]).map(norm)
   const colOf: Record<string, number> = {}
   for (const [field, names] of Object.entries(ALIASES)) {
-    const idx = headers.findIndex((h) => names.includes(h))
+    // Normalize the alias list the SAME way as the headers, so "account_code"
+    // (alias) and "account code" (normalized header) match — they otherwise
+    // wouldn't, because norm() turns underscores into spaces.
+    const normed = names.map(norm)
+    const idx = headers.findIndex((h) => normed.includes(h))
     if (idx >= 0) colOf[field] = idx
   }
 
