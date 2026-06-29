@@ -272,13 +272,16 @@
      sheet). Gives the rip depth without a harsh bright outline. */
   .rip-lip {
     position: absolute; inset: 0;
-    clip-path: inset(2% -8% 2.6% 4% round 32px);
+    clip-path: inset(0.5% -8% 1% 2% round 34px);   /* wider band — a visible curl */
+    /* Bright lit curl at the outer fold → deep shadow where it rolls under into the
+       hole: the gradient is what reads as a 3D rolled paper edge, not a flat ring. */
     background:
-      linear-gradient(158deg,
-        oklch(0.90 0.13 124) 0%,
-        oklch(0.82 0.16 126) 40%,
-        oklch(0.70 0.16 130) 100%);
-    box-shadow: inset 0 9px 14px -8px oklch(0.15 0.03 150 / 0.5);
+      linear-gradient(152deg,
+        oklch(0.97 0.05 120) 0%,
+        oklch(0.91 0.13 124) 24%,
+        oklch(0.76 0.17 130) 58%,
+        oklch(0.54 0.14 140) 100%);
+    filter: drop-shadow(0 6px 9px oklch(0.16 0.04 150 / 0.55));
   }
   /* The HOLE — a smooth rounded window torn by the parent filter, inset on three
      sides and bleeding off the right edge. Layered inset shadows = deep recess. */
@@ -293,9 +296,9 @@
         oklch(0.10 0.018 158) 72%,
         oklch(0.155 0.05 158) 100%);
     box-shadow:
-      inset 0 30px 44px -14px oklch(0 0 0 / 0.92),
-      inset 18px 0 44px -20px oklch(0 0 0 / 0.75),
-      inset -18px 0 44px -20px oklch(0 0 0 / 0.75),
+      inset 0 44px 54px -16px oklch(0 0 0 / 0.96),
+      inset 24px 0 52px -22px oklch(0 0 0 / 0.82),
+      inset -24px 0 52px -22px oklch(0 0 0 / 0.82),
       inset 0 -18px 40px -18px oklch(0.20 0.08 158 / 0.5);
   }
   /* The code reads like an editor pane: a left-aligned listing, centred in the
@@ -310,7 +313,7 @@
   .rip-overhang {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(to bottom,
-      oklch(0 0 0 / 0.82) 0%, oklch(0 0 0 / 0.34) 16%, transparent 38%);
+      oklch(0 0 0 / 0.94) 0%, oklch(0 0 0 / 0.5) 18%, transparent 44%);
   }
   /* Emerald glow rising from the depth (light from below) — brightens on hover. */
   .rip-floor {
