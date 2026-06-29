@@ -261,65 +261,41 @@
     height: clamp(440px, 66vh, 700px);   /* tall — fills the freed right space */
   }
 
-  /* The torn edge (moderate) + a contour drop-shadow that lifts the sheet off the
-     page — the main 3D cue, kept tasteful (not an exaggerated rip). */
-  .rip-depth {
+  /* THE DARK MACHINERY behind the sheet, clipped by the paper's hole mask to exactly
+     the torn opening — so the code glow never spills past the paper into the page.
+     A deep emerald-graphite recess; the paper asset supplies the lit torn rim. */
+  .rip-hole {
     position: absolute; inset: 0;
-    filter: url(#rip-torn) drop-shadow(0 24px 36px oklch(0.15 0.03 150 / 0.45));
-  }
-  /* The torn paper's THICKNESS — a lighter-lime underside clipped a touch larger
-     than the hole, so a soft ragged rim shows around the dark (the cut edge of the
-     sheet). Gives the rip depth without a harsh bright outline. */
-  .rip-lip {
-    position: absolute; inset: 0;
-    clip-path: inset(0.5% -8% 1% 2% round 34px);   /* wider band — a visible curl */
-    /* Bright lit curl at the outer fold → deep shadow where it rolls under into the
-       hole: the gradient is what reads as a 3D rolled paper edge, not a flat ring.
-       A fine fractalNoise layer (soft-light) is the paper FIBRE GRAIN — kills the flat
-       "plastic" look so the lime reads as a matte sheet, not a painted shape. */
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23p)' opacity='0.7'/%3E%3C/svg%3E"),
-      linear-gradient(152deg,
-        oklch(0.97 0.05 120) 0%,
-        oklch(0.91 0.13 124) 24%,
-        oklch(0.76 0.17 130) 58%,
-        oklch(0.54 0.14 140) 100%);
-    background-size: 150px 150px, cover;
-    background-blend-mode: overlay, normal;
-    /* A crisp lit line riding the torn edge (the top of the fold catching light) +
-       a soft dark band raked just inside it (the paper rolling under) — together they
-       give the rim curvature, so it reads as a rolled flap, not a flat painted ring.
-       The cast shadow under the whole sheet lifts it off the page. */
-    box-shadow:
-      inset 0 0 0 2.5px oklch(0.99 0.04 116 / 0.95),
-      inset 0 0 0 4px oklch(0.42 0.11 144 / 0.85),
-      inset 0 -12px 16px -6px oklch(0.36 0.10 142 / 0.75);
-    filter: drop-shadow(0 7px 11px oklch(0.16 0.04 150 / 0.6));
-  }
-  /* The HOLE — a smooth rounded window torn by the parent filter, inset on three
-     sides and bleeding off the right edge. Layered inset shadows = deep recess. */
-  .rip-depth-inner {
-    position: absolute; inset: 0;
-    clip-path: inset(4% -8% 5% 6% round 28px);
+    -webkit-mask: url("/torn-page-mask.png") center / 100% 100% no-repeat;
+            mask: url("/torn-page-mask.png") center / 100% 100% no-repeat;
     background:
-      radial-gradient(120% 90% at 50% 118%, oklch(0.20 0.08 158 / 0.9), transparent 60%),
+      radial-gradient(115% 95% at 50% 70%, oklch(0.18 0.07 158 / 0.85), transparent 64%),
       linear-gradient(160deg,
         oklch(0.045 0.004 250) 0%,
-        oklch(0.07 0.006 250) 38%,
-        oklch(0.10 0.018 158) 72%,
-        oklch(0.155 0.05 158) 100%);
-    box-shadow:
-      inset 0 44px 54px -16px oklch(0 0 0 / 0.96),
-      inset 24px 0 52px -22px oklch(0 0 0 / 0.82),
-      inset -24px 0 52px -22px oklch(0 0 0 / 0.82),
-      inset 0 -18px 40px -18px oklch(0.20 0.08 158 / 0.5);
+        oklch(0.07 0.006 250) 40%,
+        oklch(0.10 0.018 158) 74%,
+        oklch(0.15 0.05 158) 100%);
   }
-  /* The code reads like an editor pane: a left-aligned listing, centred in the
-     widest part of the hole, away from the ragged rim. */
+  /* THE REAL TORN PAGE — the lime sheet PNG, stretched to the scene box (≈square, so
+     no visible distortion). Its baked curl, fibre, cracks and self-shadow ARE the 3D;
+     a soft drop-shadow lifts the whole sheet off the (dark) page. */
+  .rip-paper {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    -webkit-user-drag: none; user-select: none;
+    /* Only a whisper of shadow — the sheet IS the page, so it must not float. The
+       curled flaps' own baked shadows do the lifting; this just seats them. */
+    filter: drop-shadow(0 3px 6px oklch(0.30 0.10 140 / 0.40));
+  }
+  /* The code reads like an editor pane glimpsed through the opening — centred in the
+     hole; the parent mask crops it to the torn shape. */
   .rip-code {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column; justify-content: center; gap: 1.15em;
-    padding: 11% 11% 13% 14%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    gap: 1.0em;
+    padding: 8% 12%;
   }
   .rip-code pre { text-shadow: 0 0 7px oklch(0.74 0.13 158 / 0.45); }  /* code glows */
   /* Hard shadow the overhanging top edge casts DOWN into the hole. */
@@ -336,12 +312,10 @@
     transition: opacity 0.3s ease;
   }
   .rip:hover .rip-floor { opacity: 1.4; }
-  /* Scan-line sweeping DOWN the hole — a fixed clip container (clipped to the hole
-     shape, no displacement → never re-runs the filter per frame) with a moving band
-     inside it. translateY ONLY. */
+  /* Scan-line sweeping DOWN the opening — a moving band; the parent .rip-hole mask
+     crops it to the torn shape. translateY ONLY (composited). */
   .rip-scan {
     position: absolute; inset: 0; pointer-events: none;
-    clip-path: inset(4% -8% 5% 6% round 28px);
   }
   .rip-scan::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26%;
