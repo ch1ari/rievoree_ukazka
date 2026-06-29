@@ -42,9 +42,14 @@ export function PageTear() {
       {/* Torn-edge filter — moderate displacement: hand-torn, but not violently
           jagged. Roughens the clipped depth's alpha into organic paper fibre. */}
       <svg className="rip-filter-def" width="0" height="0" aria-hidden="true" focusable="false">
-        <filter id="rip-torn" x="-20%" y="-20%" width="140%" height="140%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="4" seed="14" result="n" />
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="34" xChannelSelector="R" yChannelSelector="G" />
+        <filter id="rip-torn" x="-25%" y="-25%" width="150%" height="150%">
+          {/* Two-scale noise: a coarse band scallops the big tears, a fine band frays
+              them into paper FIBRE. Two displacement passes (coarse then fine) read as
+              a real deckled edge, not a smooth wave. */}
+          <feTurbulence type="fractalNoise" baseFrequency="0.011 0.018" numOctaves="4" seed="14" result="coarse" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.07 0.09" numOctaves="3" seed="7" result="fine" />
+          <feDisplacementMap in="SourceGraphic" in2="coarse" scale="32" xChannelSelector="R" yChannelSelector="G" result="d1" />
+          <feDisplacementMap in="d1" in2="fine" scale="7" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
 

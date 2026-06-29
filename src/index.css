@@ -274,13 +274,18 @@
     position: absolute; inset: 0;
     clip-path: inset(0.5% -8% 1% 2% round 34px);   /* wider band — a visible curl */
     /* Bright lit curl at the outer fold → deep shadow where it rolls under into the
-       hole: the gradient is what reads as a 3D rolled paper edge, not a flat ring. */
-    background:
+       hole: the gradient is what reads as a 3D rolled paper edge, not a flat ring.
+       A fine fractalNoise layer (soft-light) is the paper FIBRE GRAIN — kills the flat
+       "plastic" look so the lime reads as a matte sheet, not a painted shape. */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23p)' opacity='0.7'/%3E%3C/svg%3E"),
       linear-gradient(152deg,
         oklch(0.97 0.05 120) 0%,
         oklch(0.91 0.13 124) 24%,
         oklch(0.76 0.17 130) 58%,
         oklch(0.54 0.14 140) 100%);
+    background-size: 150px 150px, cover;
+    background-blend-mode: overlay, normal;
     /* A crisp lit line riding the torn edge (the top of the fold catching light) +
        a soft dark band raked just inside it (the paper rolling under) — together they
        give the rim curvature, so it reads as a rolled flap, not a flat painted ring.
