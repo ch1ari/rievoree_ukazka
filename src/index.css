@@ -242,79 +242,68 @@
    *
    * Perf: only the scan translateY animates (composited, outside the filter). The
    * torn edge + gradients are static. prefers-reduced-motion → scan off. */
-  .rip {
-    position: relative;
-    display: block;
-    width: 100%;
-    padding: 0; border: 0; margin: 0;
-    background: transparent;
-    -webkit-appearance: none; appearance: none;
-    text-align: left;
-    cursor: pointer;                 /* the whole hole is the X-ray trigger */
-    pointer-events: auto;
-  }
-  .rip:focus-visible { outline: 2px solid oklch(0.20 0.04 150); outline-offset: 6px; border-radius: 6px; }
   .rip-filter-def { position: absolute; width: 0; height: 0; overflow: hidden; }
-  .rip-scene {
-    position: relative;
-    width: 100%;
-    height: clamp(440px, 66vh, 700px);   /* tall — fills the freed right space */
-  }
 
-  /* THE DARK MACHINERY behind the sheet, clipped by the paper's hole mask to exactly
-     the torn opening — so the code glow never spills past the paper into the page.
-     A deep emerald-graphite recess; the paper asset supplies the lit torn rim. */
-  .rip-hole {
+  /* The tear wrapper fills the right half (positioned by the hero). overflow clips the
+     displaced TOP/BOTTOM fray off-view; the LEFT (tear) edge is inset so its leftward
+     fibre has room and is never clipped. */
+  .riptear {
     position: absolute; inset: 0;
-    -webkit-mask: url("/torn-page-mask.png") center / 100% 100% no-repeat;
-            mask: url("/torn-page-mask.png") center / 100% 100% no-repeat;
-    background:
-      radial-gradient(115% 95% at 50% 70%, oklch(0.18 0.07 158 / 0.85), transparent 64%),
-      linear-gradient(160deg,
-        oklch(0.045 0.004 250) 0%,
-        oklch(0.07 0.006 250) 40%,
-        oklch(0.10 0.018 158) 74%,
-        oklch(0.15 0.05 158) 100%);
-  }
-  /* THE REAL TORN PAGE — the lime sheet PNG, stretched to the scene box (≈square, so
-     no visible distortion). Its baked curl, fibre, cracks and self-shadow ARE the 3D;
-     a soft drop-shadow lifts the whole sheet off the (dark) page. */
-  .rip-paper {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: fill;
+    overflow: hidden;
     pointer-events: none;
-    -webkit-user-drag: none; user-select: none;
-    /* NO drop-shadow: the paper fades into the flat page (no outer sheet edge), so the
-       page itself reads as ripped. The curled rim's own baked shadows do all the 3D. */
   }
-  /* The code reads like an editor pane glimpsed through the opening — centred in the
-     hole; the parent mask crops it to the torn shape. */
+  /* THE DARK MACHINERY — full-height panel. The filter frays its LEFT edge into torn
+     fibre; a lit lime rim + inner shadow along that edge read it as curled torn paper
+     lifting off a dark recess. Extends past top/bottom so only the left tear shows. */
+  .riptear-dark {
+    position: absolute;
+    top: -8%; bottom: -8%; right: -4%;
+    left: 56px;                       /* room for the leftward fray, never clipped */
+    padding: 0; border: 0; margin: 0;
+    -webkit-appearance: none; appearance: none;
+    text-align: left; cursor: pointer; pointer-events: auto;
+    background:
+      radial-gradient(130% 70% at 78% 55%, oklch(0.18 0.07 158 / 0.8), transparent 60%),
+      linear-gradient(115deg,
+        oklch(0.05 0.005 250) 0%,
+        oklch(0.075 0.008 250) 42%,
+        oklch(0.11 0.022 158) 78%,
+        oklch(0.15 0.05 158) 100%);
+    filter: url(#tear-rough);
+    /* lit torn fibre at the edge → the fold rolling under → deep recess shadow inside */
+    box-shadow:
+      inset 3px 0 0 0 oklch(0.95 0.21 124 / 0.95),
+      inset 8px 0 0 0 oklch(0.78 0.20 126 / 0.85),
+      inset 13px 0 0 0 oklch(0.50 0.13 140 / 0.7),
+      inset 40px 0 44px -16px oklch(0 0 0 / 0.9);
+  }
+  .riptear-dark:focus-visible { outline: 2px solid oklch(0.86 0.18 124); outline-offset: -6px; }
+
+  /* Crisp content overlay — offset to the RIGHT of the ragged edge (never filtered), so
+     code, glow and scan sit over the dark recess only and stay sharp. */
+  .riptear-content {
+    position: absolute; top: 0; bottom: 0; right: 0; left: 19%;
+    overflow: hidden; pointer-events: none;
+  }
+  /* The code reads like an editor pane glimpsed in the recess. */
   .rip-code {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    gap: 1.0em;
-    padding: 8% 12%;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 1.05em;
+    padding: 0 7% 0 2%;
   }
   .rip-code pre { text-shadow: 0 0 7px oklch(0.74 0.13 158 / 0.45); }  /* code glows */
-  /* Hard shadow the overhanging top edge casts DOWN into the hole. */
-  .rip-overhang {
-    position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(to bottom,
-      oklch(0 0 0 / 0.94) 0%, oklch(0 0 0 / 0.5) 18%, transparent 44%);
-  }
   /* Emerald glow rising from the depth (light from below) — brightens on hover. */
   .rip-floor {
     position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(to top,
-      oklch(0.72 0.13 158 / 0.4) 0%, oklch(0.72 0.12 158 / 0.1) 30%, transparent 58%);
+      oklch(0.72 0.13 158 / 0.34) 0%, oklch(0.72 0.12 158 / 0.08) 32%, transparent 60%);
     transition: opacity 0.3s ease;
   }
-  .rip:hover .rip-floor { opacity: 1.4; }
-  /* Scan-line sweeping DOWN the opening — a moving band; the parent .rip-hole mask
-     crops it to the torn shape. translateY ONLY (composited). */
+  .riptear:hover .rip-floor { opacity: 1.4; }
+  /* Scan-line sweeping DOWN the recess — translateY ONLY (composited). */
   .rip-scan {
-    position: absolute; inset: 0; pointer-events: none;
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden;
   }
   .rip-scan::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26%;
@@ -327,9 +316,9 @@
     animation: rip-scan 6.5s ease-in-out infinite;
   }
 
-  /* "click to x-ray" hint — sits low in the hole, brightens on hover. */
+  /* "click to x-ray" hint — low in the recess, brightens on hover. */
   .rip-hint {
-    position: absolute; left: 50%; bottom: 8%;
+    position: absolute; left: 50%; bottom: 11%;
     transform: translateX(-50%);
     display: inline-flex; align-items: center; gap: 0.5em;
     padding: 0.5em 0.95em; border-radius: 9999px;
@@ -343,7 +332,7 @@
     opacity: 0.82;
     transition: opacity 0.3s ease, border-color 0.3s ease, background 0.3s ease;
   }
-  .rip:hover .rip-hint {
+  .riptear-dark:hover .rip-hint {
     opacity: 1;
     border-color: oklch(0.86 0.16 158 / 0.9);
     background: oklch(0.07 0.012 158 / 0.7);
@@ -376,10 +365,8 @@
 }
 .ignite { animation: accent-ignite 0.9s ease-out 0.55s both; }
 
-/* Slightly smaller rip on small screens (it stacks below the hero copy there). */
-@media (max-width: 768px) {
-  .rip-scene { height: clamp(340px, 52vh, 480px); }
-}
+/* The full-height torn panel is desktop-only (hidden below lg in the hero markup),
+   so no small-screen sizing is needed here. */
 
 /* Reduced motion: hold everything still, keep a calm static reveal. */
 @media (prefers-reduced-motion: reduce) {
