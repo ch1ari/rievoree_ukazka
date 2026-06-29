@@ -39,10 +39,21 @@ export function PageTear() {
     <button type="button" onClick={toggle} className="rip group"
       aria-label="X-ray this page — reveal the real source beneath the surface">
 
+      {/* Torn-edge filter — moderate displacement: hand-torn, but not violently
+          jagged. Roughens the clipped depth's alpha into organic paper fibre. */}
+      <svg className="rip-filter-def" width="0" height="0" aria-hidden="true" focusable="false">
+        <filter id="rip-torn" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="4" seed="14" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="34" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+
       <div className="rip-scene">
-        {/* THE DARK DEPTH — a clean dark window cut into the lime page, recessed
-            with inner shadows so it reads as a deep opening, not a flat rectangle. */}
+        {/* THE DARK DEPTH — the filter on this parent tears the clipped inner edge. */}
         <div className="rip-depth">
+          {/* The torn paper's THICKNESS — a lighter-lime underside peeking around
+              the hole, giving the rip real 3D depth (a cut sheet, not a flat hole). */}
+          <div className="rip-lip" aria-hidden="true" />
           <div className="rip-depth-inner">
             {/* A slice of the real source — reads like the X-ray editor pane. */}
             <div className="rip-code" aria-hidden="true">
