@@ -6,15 +6,22 @@ import rlsSrc from "../../supabase/migrations/20260605000001_identity_and_tenanc
 import dbSrc from "../../worker/src/db.ts?raw"
 
 /**
- * THE RIP — the lime PAGE itself torn down the middle. The left half stays lime (the
- * headline lives there); the right half is the dark machinery, revealed along a
- * full-height ragged vertical tear. The tear is procedural: an feTurbulence +
- * feDisplacementMap filter frays the dark panel's straight left edge into hand-torn
- * paper fibre, and a lit lime rim + inner shadow along that edge read as the curled
- * torn paper lifting off the recess. The dark panel is the X-ray trigger.
+ * THE RIP — a real photographed LIME sheet of paper torn open, exposing the dark
+ * machinery beneath. The sheet (`/torn-page.png`) carries genuine torn-paper depth:
+ * curled flaps, fibre grain, cracks and self-shadow — recoloured to the brand lime.
+ * Its transparent central opening reveals the dark code; a companion mask
+ * (`/torn-page-mask.png`) clips that dark interior to exactly the opening, so the
+ * code never leaks past the paper into the (dark) page around it — the corners simply
+ * fall back to the page, so the sheet reads as the page itself ripped, not a pasted-on
+ * square.
  *
- * Through the tear: a slice of our REAL source (literal repo files via Vite `?raw`),
- * an emerald glow and a scan-line. prefers-reduced-motion → scan off.
+ * Through the hole: a slice of our REAL source (literal repo files via Vite `?raw`),
+ * an emerald glow rising from the depth, and a scan-line sweeping down. The whole
+ * tear is a BUTTON → toggles the full-page X-ray.
+ *
+ * Honesty invariant: every snippet is the literal repo file via `?raw` — the RLS
+ * tenant policy, the tenant-filtered report view, and the worker's skip-locked
+ * queue claim. prefers-reduced-motion → scan off (the edge is already static).
  */
 
 // #region xray
@@ -30,37 +37,37 @@ const FRAGMENTS: { code: string; tone: string }[] = [
 export function PageTear() {
   const { toggle } = useXray()
   return (
-    <div className="riptear">
-      {/* Torn-edge filter — two-scale displacement: coarse scallops + fine fibre. */}
-      <svg className="rip-filter-def" width="0" height="0" aria-hidden="true" focusable="false">
-        <filter id="tear-rough" x="-15%" y="-5%" width="130%" height="110%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.006 0.014" numOctaves="4" seed="11" result="coarse" />
-          <feTurbulence type="fractalNoise" baseFrequency="0.04 0.09" numOctaves="3" seed="5" result="fine" />
-          <feDisplacementMap in="SourceGraphic" in2="coarse" scale="46" xChannelSelector="R" yChannelSelector="G" result="d1" />
-          <feDisplacementMap in="d1" in2="fine" scale="9" xChannelSelector="R" yChannelSelector="G" />
-        </filter>
-      </svg>
+    <button type="button" onClick={toggle} className="rip group"
+      aria-label="X-ray this page — reveal the real source beneath the surface">
 
-      {/* THE DARK MACHINERY — full-height panel; the filter frays ONLY this shape's
-          left edge (no children, so the code/hint stay crisp). It is the X-ray trigger. */}
-      <button type="button" onClick={toggle} className="riptear-dark group"
-        aria-label="X-ray this page — reveal the real source beneath the surface" />
-
-      {/* Crisp overlay (NOT filtered) — code, glow, scan and hint, held to the RIGHT of
-          the ragged edge so they sit over the dark recess only. */}
-      <div className="riptear-content" aria-hidden="true">
-        <div className="rip-code">
-          {FRAGMENTS.map((f, i) => (
-            <pre key={i} className={`m-0 whitespace-pre font-mono text-[11px] leading-relaxed ${f.tone}`}>
-              {f.code}
-            </pre>
-          ))}
+      <div className="rip-scene">
+        {/* THE DARK MACHINERY — shown ONLY through the torn opening (masked to the
+            paper's hole), so it never leaks past the sheet into the page. */}
+        <div className="rip-hole" aria-hidden="true">
+          {/* A slice of the real source — reads like the X-ray editor pane. */}
+          <div className="rip-code">
+            {FRAGMENTS.map((f, i) => (
+              <pre key={i} className={`m-0 whitespace-pre font-mono text-[10.5px] leading-relaxed ${f.tone}`}>
+                {f.code}
+              </pre>
+            ))}
+          </div>
+          {/* Emerald glow rising from the depth (light from below). */}
+          <div className="rip-floor" />
+          {/* The overhanging torn edge casts a hard shadow DOWN into the hole. */}
+          <div className="rip-overhang" />
+          {/* Scan-line sweeping down the opening. translateY only (composited). */}
+          <div className="rip-scan" />
         </div>
-        <div className="rip-floor" />
-        <div className="rip-scan" />
+
+        {/* THE REAL TORN PAGE — lime sheet ripped open; curled edges, fibre, cracks and
+            self-shadow are all in the asset. Sits ON TOP; its hole reveals the code. */}
+        <img className="rip-paper" src="/torn-page.png" alt="" aria-hidden="true" draggable={false} />
+
+        {/* Hint that the tear is the X-ray trigger. */}
         <span className="rip-hint"><ScanLine className="size-3.5" strokeWidth={2.25} aria-hidden /> click to x-ray</span>
       </div>
-    </div>
+    </button>
   )
 }
 // #endregion

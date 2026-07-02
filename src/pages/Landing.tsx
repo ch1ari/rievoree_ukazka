@@ -64,17 +64,10 @@ export function Landing() {
       {/* 1 — Hero: bold dark editorial. Oversized square headline + pitch + CTAs
           anchored LEFT; RIGHT holds a fixed, quietly pulsing rip in the freed
           space, exposing the real machinery. Big REAL numbers sit below. */}
-      <section className="relative overflow-hidden px-6 pb-20 pt-14 md:px-12 md:pt-20 lg:px-16">
-        {/* The lime page TORN DOWN THE MIDDLE — left stays lime (headline lives here),
-            the right half is the dark machinery revealed along a full-height ragged
-            vertical tear. Sits behind the copy; only the dark panel is clickable. */}
-        <motion.div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[52%] lg:block"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.4 }}>
-          <PageTear />
-        </motion.div>
-        <div className="relative z-10 mx-auto max-w-[2400px]">
-          {/* Split hero — headline + pitch + CTA LEFT; the dark machinery is revealed
-              RIGHT through the torn page (rendered as a full-height panel above). */}
+      <section className="overflow-x-clip px-6 pb-20 pt-14 md:px-12 md:pt-20 lg:px-16">
+        <div className="mx-auto max-w-[2400px]">
+          {/* Split hero — headline + pitch + CTA LEFT; a torn hole in the paper
+              RIGHT, filling the freed space and exposing the dark machinery. */}
           <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
             {/* No max-width cap here — the oversized "MACHINERY" headline must use
                 the full left column so it never wraps mid-word. The pitch, CTAs and
@@ -132,18 +125,18 @@ export function Landing() {
               </motion.p>
             </div>
 
-            {/* RIGHT — spacer reserving the right column on desktop; the dark machinery
-                is the full-height torn panel rendered behind it (absolute, above). */}
-            <div className="hidden min-w-0 lg:block" aria-hidden="true" />
+            {/* RIGHT — the paper torn open at the page's right edge; the dark
+                machinery glows through. Negative right margin cancels the section
+                padding so the tear bleeds to the viewport edge (anchored, not a
+                floating square). The whole hole is CLICKABLE → full-page X-ray. */}
+            <motion.div className="min-w-0 -mr-6 md:-mr-12 lg:-mr-16" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}>
+              <PageTear />
+            </motion.div>
           </div>
-        </div>
-      </section>
 
-      {/* Big real numbers — a separate lime band so the full-height torn panel above
-          never covers them. */}
-      <section className="px-6 pb-20 md:px-12 lg:px-16">
-        <div className="mx-auto max-w-[2400px]">
-          <div className="grid grid-cols-2 border-t border-border md:grid-cols-4">
+          {/* Big real numbers — the demo dataset, count-up on load. */}
+          <div className="mt-16 grid grid-cols-2 border-t border-border md:mt-24 md:grid-cols-4">
             {STATS.map((s, i) => (
               <motion.div key={s.label}
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 + i * 0.1 }}
