@@ -265,41 +265,41 @@
   /* THE DARK MACHINERY behind the sheet, clipped by the paper's hole mask to exactly
      the torn opening — so the code glow never spills past the paper into the page.
      A deep emerald-graphite recess; the paper asset supplies the lit torn rim. */
+  /* THE DARK RECESS — a CENTRED dark pool behind the hole (fades out well before the
+     scene edges), so the video's feathered edges reveal the lime PAGE, not a dark box.
+     The video's animated transparent hole sits over this pool → the machinery shows. */
   .rip-hole {
     position: absolute; inset: 0;
-    /* Scale UP (same factor as the paper) so the hole is BIG and the outer sheet edge
-       crops off — leaving only a large hole surrounded by paper: a hole IN the page. */
-    transform: scale(1.55);
-    -webkit-mask: url("/torn-page-mask.png") center / 100% 100% no-repeat;
-            mask: url("/torn-page-mask.png") center / 100% 100% no-repeat;
     background:
-      radial-gradient(115% 95% at 50% 70%, oklch(0.18 0.07 158 / 0.85), transparent 64%),
-      linear-gradient(160deg,
-        oklch(0.045 0.004 250) 0%,
-        oklch(0.07 0.006 250) 40%,
-        oklch(0.10 0.018 158) 74%,
-        oklch(0.15 0.05 158) 100%);
+      radial-gradient(ellipse 34% 37% at 52% 47%,
+        oklch(0.05 0.006 250) 0%,
+        oklch(0.06 0.008 158) 62%,
+        transparent 84%);
   }
-  /* THE REAL TORN PAGE — the lime sheet PNG, stretched to the scene box (≈square, so
-     no visible distortion). Its baked curl, fibre, cracks and self-shadow ARE the 3D;
-     a soft drop-shadow lifts the whole sheet off the (dark) page. */
+  /* THE REAL TORN PAGE — a video of paper tearing open, keyed + recoloured to the page
+     lime and set to fill the frame. Its edges are FEATHERED into the page (mask) so the
+     rectangular block dissolves — only the animated hole + rim read. */
   .rip-paper {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
-    object-fit: fill;
-    transform: scale(1.55);          /* MUST match .rip-hole so hole + paper stay aligned */
+    object-fit: cover;               /* the 480² paper fills the scene; hole stays centred */
     pointer-events: none;
-    -webkit-user-drag: none; user-select: none;
-    /* NO drop-shadow: the paper fades into the flat page (no outer sheet edge), so the
-       page itself reads as ripped. The curled rim's own baked shadows do all the 3D. */
+    user-select: none;
+    -webkit-mask: radial-gradient(ellipse 80% 86% at 53% 47%, #000 44%, transparent 82%);
+            mask: radial-gradient(ellipse 80% 86% at 53% 47%, #000 44%, transparent 82%);
   }
   /* The code reads like an editor pane glimpsed through the opening — centred in the
-     hole; the parent mask crops it to the torn shape. */
+     hole so the video's transparent tear reveals it. */
   .rip-code {
     position: absolute; inset: 0;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
-    gap: 1.0em;
-    padding: 8% 12%;
+    gap: 0.9em;
+    padding: 20% 24%;
+    overflow: hidden;
+    /* Mask the code to the central hole region (matches the dark pool) so it only shows
+       through the tear and never leaks past the paper into the feathered edges. */
+    -webkit-mask: radial-gradient(ellipse 33% 36% at 52% 47%, #000 52%, transparent 86%);
+            mask: radial-gradient(ellipse 33% 36% at 52% 47%, #000 52%, transparent 86%);
   }
   .rip-code pre { text-shadow: 0 0 7px oklch(0.74 0.13 158 / 0.45); }  /* code glows */
   /* Hard shadow the overhanging top edge casts DOWN into the hole. */

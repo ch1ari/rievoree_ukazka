@@ -6,18 +6,17 @@ import rlsSrc from "../../supabase/migrations/20260605000001_identity_and_tenanc
 import dbSrc from "../../worker/src/db.ts?raw"
 
 /**
- * THE RIP — a real photographed LIME sheet of paper torn open, exposing the dark
- * machinery beneath. The sheet (`/torn-page.png`) carries genuine torn-paper depth:
- * curled flaps, fibre grain, cracks and self-shadow — recoloured to the brand lime.
- * Its transparent central opening reveals the dark code; a companion mask
- * (`/torn-page-mask.png`) clips that dark interior to exactly the opening, so the
- * code never leaks past the paper into the (dark) page around it — the corners simply
- * fall back to the page, so the sheet reads as the page itself ripped, not a pasted-on
- * square.
+ * THE RIP — a real VIDEO of paper tearing open (rawpixel), keyed + recoloured so the
+ * lime page itself rips to expose the dark machinery. The green screen behind the tear
+ * is chroma-keyed to a transparent hole and the white paper is recoloured to the brand
+ * lime (see /torn-hole.webm, built from the source clip); the paper fills the whole
+ * frame and its rectangular edges are feathered into the page, so there is NO visible
+ * sheet — only the animated hole + torn rim, reading as a hole IN the page. A static
+ * PNG (`/torn-page.png`) is the poster/fallback where VP9-alpha video isn't supported.
  *
- * Through the hole: a slice of our REAL source (literal repo files via Vite `?raw`),
- * an emerald glow rising from the depth, and a scan-line sweeping down. The whole
- * tear is a BUTTON → toggles the full-page X-ray.
+ * Behind the hole: a dark recess with a slice of our REAL source (literal repo files
+ * via Vite `?raw`), an emerald glow and a scan-line — all confined to the centre so
+ * they only show through the tear. The whole tear is a BUTTON → toggles the X-ray.
  *
  * Honesty invariant: every snippet is the literal repo file via `?raw` — the RLS
  * tenant policy, the tenant-filtered report view, and the worker's skip-locked
@@ -41,8 +40,8 @@ export function PageTear() {
       aria-label="X-ray this page — reveal the real source beneath the surface">
 
       <div className="rip-scene">
-        {/* THE DARK MACHINERY — shown ONLY through the torn opening (masked to the
-            paper's hole), so it never leaks past the sheet into the page. */}
+        {/* THE DARK MACHINERY — a full dark recess behind the paper; the animated hole
+            in the video reveals it (and the live source) as the paper tears open. */}
         <div className="rip-hole" aria-hidden="true">
           {/* A slice of the real source — reads like the X-ray editor pane. */}
           <div className="rip-code">
@@ -54,15 +53,16 @@ export function PageTear() {
           </div>
           {/* Emerald glow rising from the depth (light from below). */}
           <div className="rip-floor" />
-          {/* The overhanging torn edge casts a hard shadow DOWN into the hole. */}
-          <div className="rip-overhang" />
           {/* Scan-line sweeping down the opening. translateY only (composited). */}
           <div className="rip-scan" />
         </div>
 
-        {/* THE REAL TORN PAGE — lime sheet ripped open; curled edges, fibre, cracks and
-            self-shadow are all in the asset. Sits ON TOP; its hole reveals the code. */}
-        <img className="rip-paper" src="/torn-page.png" alt="" aria-hidden="true" draggable={false} />
+        {/* THE REAL TORN PAGE — a video of paper actually tearing open (rawpixel),
+            green-screen keyed to a transparent hole and recoloured to the page lime, so
+            the paper fills the frame (no visible edges) and the animated hole reveals
+            the machinery beneath. Static PNG poster is the fallback (e.g. Safari). */}
+        <video className="rip-paper" src="/torn-hole.webm" poster="/torn-page.png"
+          autoPlay loop muted playsInline aria-hidden="true" />
 
         {/* Hint that the tear is the X-ray trigger. */}
         <span className="rip-hint"><ScanLine className="size-3.5" strokeWidth={2.25} aria-hidden /> click to x-ray</span>
