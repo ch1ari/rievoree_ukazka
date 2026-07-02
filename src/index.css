@@ -233,15 +233,23 @@
     will-change: transform;
   }
 
-  /* ---- The rip (PageTear) — the page TORN OPEN at its right edge --------------
-   * No lime overlay: the dark depth is clipped to a hole and the real page shows
-   * around it (seamless). The inner layer is clipped to a SMOOTH rounded shape;
-   * an feTurbulence + feDisplacementMap filter on the PARENT (.rip-depth) roughens
-   * that already-clipped alpha edge into hand-torn fibre — organic, not a sawtooth.
-   * The hole's RIGHT side bleeds off-box, so the tear is anchored to the page edge.
+  /* ---- The rip (PageTear) — the page TORN OPEN beside the hero copy ----------
+   * The torn-paper VIDEO is rebuilt from the green-screen source by
+   * scripts/build-torn-hole.py: the paper is flat-field corrected (vignette
+   * removed) + recoloured to the EXACT sheet colour (#A3E635, PaperBackground's
+   * field — its grain is replayed on top), the hole keyed to transparent
+   * alpha with a baked inner rim shadow, and the alpha feathered to zero well
+   * inside every object-fit:cover crop — the sheet has NO visible edge at any
+   * viewport; only the animated hole + torn rim read.
    *
-   * Perf: only the scan translateY animates (composited, outside the filter). The
-   * torn edge + gradients are static. prefers-reduced-motion → scan off. */
+   * All hole-relative geometry is expressed in the video's 1280×800 canvas
+   * space via container-query units:
+   *   --rs  = max(100cqw/1280, 100cqh/800)  → canvas px → css px (cover scale)
+   *   hole centre = (50%, 50% − 12·--rs)    → canvas (640, 388)
+   *
+   * Perf: only the scan translateY + floor-glow opacity animate. The video
+   * plays ONCE and freezes open. prefers-reduced-motion / Safari → React swaps
+   * in the static alpha-WebP twin; scan + breathe stop below. */
   .rip {
     position: relative;
     display: block;
@@ -254,95 +262,126 @@
     pointer-events: auto;
   }
   .rip:focus-visible { outline: 2px solid oklch(0.20 0.04 150); outline-offset: 6px; border-radius: 6px; }
-  .rip-filter-def { position: absolute; width: 0; height: 0; overflow: hidden; }
   .rip-scene {
     position: relative;
     width: 100%;
     height: clamp(440px, 66vh, 700px);   /* tall — fills the freed right space */
-    overflow: hidden;                    /* crop the outer sheet edge → only the hole */
+    overflow: hidden;                    /* crop the cover'd video */
+    container-type: size;                /* cq units for the canvas-space geometry */
+    /* fallback --rs when cq units are unsupported (assumes a ~600px box) */
+    --rs: 0.75px;
+    --rcx: 50%;
+    --rcy: calc(50% - 12 * var(--rs));
+  }
+  @supports (width: 1cqw) {
+    .rip-scene { --rs: max(0.078125cqw, 0.125cqh); }  /* = max(100cqw/1280, 100cqh/800) */
   }
 
-  /* THE DARK MACHINERY behind the sheet, clipped by the paper's hole mask to exactly
-     the torn opening — so the code glow never spills past the paper into the page.
-     A deep emerald-graphite recess; the paper asset supplies the lit torn rim. */
-  /* THE DARK RECESS — a CENTRED dark pool behind the hole (fades out well before the
-     scene edges), so the video's feathered edges reveal the lime PAGE, not a dark box.
-     The video's animated transparent hole sits over this pool → the machinery shows. */
+  /* THE DARK RECESS — an emerald-graphite pool behind the hole with real depth:
+     a lit core falling into deep teal walls, a shade under the overhanging top
+     flap, a breathing floor glow. It fades out INSIDE the video's opaque paper
+     zone, so it can only ever show through the keyed hole — never past it. */
   .rip-hole {
     position: absolute; inset: 0;
     background:
-      radial-gradient(ellipse 34% 37% at 52% 47%,
-        oklch(0.05 0.006 250) 0%,
-        oklch(0.06 0.008 158) 62%,
-        transparent 84%);
+      /* shade cast down by the overhanging top flap */
+      radial-gradient(ellipse calc(290 * var(--rs)) calc(160 * var(--rs)) at var(--rcx) calc(var(--rcy) - 140 * var(--rs)),
+        oklch(0.02 0.005 210 / 0.55) 0%, transparent 78%),
+      /* the recess itself — deep emerald, never flat black */
+      radial-gradient(ellipse calc(310 * var(--rs)) calc(295 * var(--rs)) at var(--rcx) var(--rcy),
+        oklch(0.20 0.04 188) 0%,
+        oklch(0.15 0.032 194) 38%,
+        oklch(0.10 0.022 200) 62%,
+        oklch(0.06 0.014 206 / 0.85) 80%,
+        transparent 95%);
   }
-  /* THE REAL TORN PAGE — a video of paper tearing open, keyed + recoloured to the page
-     lime and set to fill the frame. Its edges are FEATHERED into the page (mask) so the
-     rectangular block dissolves — only the animated hole + rim read. */
+  /* faint horizontal scan texture inside the recess — machinery, not a void */
+  .rip-hole::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom,
+      oklch(0.9 0.1 180 / 0.05) 0 1px, transparent 1px 4px);
+    -webkit-mask: radial-gradient(ellipse calc(280 * var(--rs)) calc(260 * var(--rs)) at var(--rcx) var(--rcy), #000 55%, transparent 90%);
+            mask: radial-gradient(ellipse calc(280 * var(--rs)) calc(260 * var(--rs)) at var(--rcx) var(--rcy), #000 55%, transparent 90%);
+  }
+  /* THE PAGE ITSELF, TORN — the rebuilt alpha video (or its static WebP twin).
+     Alpha + rim shadow are baked into the asset; no CSS mask is needed. */
   .rip-paper {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
-    object-fit: cover;               /* the 480² paper fills the scene; hole stays centred */
+    object-fit: cover;               /* canvas-space geometry above tracks this */
     pointer-events: none;
     user-select: none;
-    -webkit-mask: radial-gradient(ellipse 80% 86% at 53% 47%, #000 44%, transparent 82%);
-            mask: radial-gradient(ellipse 80% 86% at 53% 47%, #000 44%, transparent 82%);
   }
-  /* The code reads like an editor pane glimpsed through the opening — centred in the
-     hole so the video's transparent tear reveals it. */
-  .rip-code {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    gap: 0.9em;
-    padding: 20% 24%;
-    overflow: hidden;
-    /* Mask the code to the central hole region (matches the dark pool) so it only shows
-       through the tear and never leaks past the paper into the feathered edges. */
-    -webkit-mask: radial-gradient(ellipse 33% 36% at 52% 47%, #000 52%, transparent 86%);
-            mask: radial-gradient(ellipse 33% 36% at 52% 47%, #000 52%, transparent 86%);
-  }
-  .rip-code pre { text-shadow: 0 0 7px oklch(0.74 0.13 158 / 0.45); }  /* code glows */
-  /* Hard shadow the overhanging top edge casts DOWN into the hole. */
-  .rip-overhang {
+  /* PaperBackground's grain, replayed over the torn sheet (see PageTear.tsx).
+     The mask must TRACK the video's baked alpha feather (opaque to ~305·--rs,
+     gone by ~380·--rs): anywhere the paper is opaque but the grain missing
+     reads as a bright airbrushed ring against the toothy page. */
+  .rip-grain {
     position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(to bottom,
-      oklch(0 0 0 / 0.94) 0%, oklch(0 0 0 / 0.5) 18%, transparent 44%);
+    -webkit-mask: radial-gradient(ellipse calc(378 * var(--rs)) calc(356 * var(--rs)) at var(--rcx) var(--rcy), #000 86%, transparent 100%);
+            mask: radial-gradient(ellipse calc(378 * var(--rs)) calc(356 * var(--rs)) at var(--rcx) var(--rcy), #000 86%, transparent 100%);
   }
-  /* Emerald glow rising from the depth (light from below) — brightens on hover. */
+  /* The code reads like an editor pane glimpsed through the opening — a block
+     centred in the hole, soft-masked so it never touches the torn rim. */
+  .rip-code {
+    position: absolute;
+    left: var(--rcx); top: var(--rcy);
+    width: calc(370 * var(--rs)); height: calc(300 * var(--rs));
+    transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    gap: 1.1em;
+    overflow: hidden;
+    -webkit-mask: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 92%);
+            mask: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 92%);
+  }
+  .rip-code pre {
+    font-size: clamp(8.5px, calc(11.5 * var(--rs)), 14.5px);  /* tracks the hole */
+    text-shadow: 0 0 10px oklch(0.75 0.13 165 / 0.55);        /* code glows */
+  }
+  .rip-tone-a { color: oklch(0.85 0.14 163 / 0.97); }   /* emerald source lines */
+  .rip-tone-b { color: oklch(0.81 0.11 197 / 0.94); }   /* teal — the data window */
+  /* Emerald glow rising from the depth (light from below) — breathes slowly,
+     brightens on hover. */
   .rip-floor {
     position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(to top,
-      oklch(0.72 0.13 158 / 0.4) 0%, oklch(0.72 0.12 158 / 0.1) 30%, transparent 58%);
+    background: radial-gradient(ellipse calc(300 * var(--rs)) calc(190 * var(--rs)) at var(--rcx) calc(var(--rcy) + 150 * var(--rs)),
+      oklch(0.68 0.14 168 / 0.4) 0%, oklch(0.68 0.13 168 / 0.12) 55%, transparent 78%);
+    animation: rip-breathe 5.5s ease-in-out infinite alternate;
     transition: opacity 0.3s ease;
   }
-  .rip:hover .rip-floor { opacity: 1.4; }
-  /* Scan-line sweeping DOWN the opening — a moving band; the parent .rip-hole mask
-     crops it to the torn shape. translateY ONLY (composited). */
+  .rip:hover .rip-floor { animation: none; opacity: 1; }
+  /* Scan-line sweeping DOWN the opening — a moving band, masked to the hole.
+     translateY ONLY (composited). */
   .rip-scan {
     position: absolute; inset: 0; pointer-events: none;
+    -webkit-mask: radial-gradient(ellipse calc(290 * var(--rs)) calc(270 * var(--rs)) at var(--rcx) var(--rcy), #000 58%, transparent 88%);
+            mask: radial-gradient(ellipse calc(290 * var(--rs)) calc(270 * var(--rs)) at var(--rcx) var(--rcy), #000 58%, transparent 88%);
   }
   .rip-scan::before {
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26%;
     background: linear-gradient(to bottom,
-      transparent 0%, oklch(0.88 0.16 158 / 0.12) 42%, oklch(0.95 0.18 158 / 0.24) 50%,
-      oklch(0.88 0.16 158 / 0.12) 58%, transparent 100%);
+      transparent 0%, oklch(0.88 0.16 158 / 0.10) 42%, oklch(0.95 0.18 158 / 0.20) 50%,
+      oklch(0.88 0.16 158 / 0.10) 58%, transparent 100%);
     mix-blend-mode: screen;
     will-change: transform;
     transform: translateY(-120%);
-    animation: rip-scan 6.5s ease-in-out infinite;
+    animation: rip-scan 7s ease-in-out infinite;
   }
 
-  /* "click to x-ray" hint — sits low in the hole, brightens on hover. */
+  /* "click to x-ray" hint — floats just below the hole, brightens on hover. */
   .rip-hint {
-    position: absolute; left: 50%; bottom: 8%;
-    transform: translateX(-50%);
+    position: absolute;
+    left: var(--rcx); top: calc(var(--rcy) + 138 * var(--rs));
+    transform: translate(-50%, -50%);
     display: inline-flex; align-items: center; gap: 0.5em;
     padding: 0.5em 0.95em; border-radius: 9999px;
     background: oklch(0.05 0.006 250 / 0.62);
     border: 1px solid oklch(0.82 0.15 158 / 0.45);
     color: oklch(0.88 0.15 158);
     font-family: var(--font-mono);
-    font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+    /* tracks the hole size; tops out at the original 0.66rem */
+    font-size: clamp(8px, calc(12 * var(--rs)), 10.56px);
+    font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
     white-space: nowrap;
     backdrop-filter: blur(2px);
     opacity: 0.82;
@@ -354,10 +393,14 @@
     background: oklch(0.07 0.012 158 / 0.7);
   }
 
-  /* ---- scan keyframe (the ONLY animation) --------------------------------- */
+  /* ---- rip keyframes (scan sweep + floor breathe) -------------------------- */
   @keyframes rip-scan {
     0%   { transform: translateY(-120%); }
     100% { transform: translateY(400%); }
+  }
+  @keyframes rip-breathe {
+    from { opacity: 0.72; }
+    to   { opacity: 1; }
   }
 
   /* Full-bleed background orbs (OrbsBackground). */
@@ -393,8 +436,9 @@
   .ignite { animation: none !important; }
   .torn-glow { display: none !important; }
   .torn-code { transform: none !important; }
-  /* The torn edge is already static; just stop the scan sweep. */
+  /* The tear is a static image here (React swaps it); stop scan + breathe. */
   .rip-scan { display: none !important; }
+  .rip-floor { animation: none !important; }
 }
 
 @layer base {
