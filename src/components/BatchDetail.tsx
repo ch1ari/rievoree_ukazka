@@ -144,6 +144,9 @@ export function BatchDetail({
   )
 }
 
+// Sentinel for "no column" — Radix Select items can't have an empty value.
+const NONE = "__none__"
+
 // The fields we can map a source column onto. txn_date + account_code are the
 // ones that, missing, error every row — so they lead.
 const REMAP_FIELDS: { key: string; label: string; aliases: string[] }[] = [
@@ -204,7 +207,10 @@ function RemapPanel({ batchId, rows }: { batchId: string; rows: StagingRowView[]
   function apply() {
     const built = rows.map((r) => {
       const raw = (r.raw ?? {}) as Record<string, unknown>
-      const pick = (key: string) => (map[key] ? String(raw[map[key]] ?? "") : "")
+      const pick = (key: string) => {
+        const col = map[key]
+        return col && col !== NONE ? String(raw[col] ?? "") : ""
+      }
       return {
         account_code: pick("account_code").trim() || null,
         txn_date: parseDateLoose(pick("txn_date")),
@@ -218,7 +224,8 @@ function RemapPanel({ batchId, rows }: { batchId: string; rows: StagingRowView[]
     reprocess.mutate({ batchId, rows: built })
   }
 
-  const options = [{ value: "", label: "— none —" }, ...columns.map((c) => ({ value: c, label: c }))]
+  // Radix Select forbids an empty-string item value, so "none" uses a sentinel.
+  const options = [{ value: NONE, label: "— none —" }, ...columns.map((c) => ({ value: c, label: c }))]
 
   return (
     <details className="mt-4 rounded-xl border border-border bg-background/40 p-4 open:bg-background/60">
@@ -234,9 +241,9 @@ function RemapPanel({ batchId, rows }: { batchId: string; rows: StagingRowView[]
           <label key={f.key} className="flex flex-col gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{f.label}</span>
             <SimpleSelect size="sm" className="w-full" aria-label={f.label}
-              value={map[f.key] ?? ""} onValueChange={(v) => setMap((m) => ({ ...m, [f.key]: v }))}
+              value={map[f.key] ?? NONE} onValueChange={(v) => setMap((m) => ({ ...m, [f.key]: v }))}
               options={options} />
-            {map[f.key] && (
+            {map[f.key] && map[f.key] !== NONE && (
               <span className="truncate font-mono text-[10px] text-foreground/50">
                 e.g. {String((sample as Record<string, unknown>)[map[f.key]] ?? "—")}
               </span>
