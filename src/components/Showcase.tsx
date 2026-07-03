@@ -1,6 +1,6 @@
 import { motion } from "motion/react"
 import { sliceStatement, sliceFrom } from "@/lib/code-xray"
-import { PanelIngest, PanelReports, PanelXray } from "@/components/showcase/MiniPanels"
+import { PanelShot } from "@/components/showcase/PanelShot"
 import dbSrc from "../../worker/src/db.ts?raw"
 import rlsSrc from "../../supabase/migrations/20260605000001_identity_and_tenancy.sql?raw"
 import instrSrc from "@/lib/xray/instrumentedFetch.ts?raw"
@@ -15,10 +15,13 @@ import instrSrc from "@/lib/xray/instrumentedFetch.ts?raw"
  */
 type Kind = "pipeline" | "rls" | "signal"
 
-const PANELS: Record<Kind, () => React.ReactElement> = {
-  pipeline: PanelIngest,
-  rls: PanelReports,
-  signal: PanelXray,
+// Real product screenshots (public/showcase), captured from the live app. Paired
+// with the three stations — ingest batches, the RLS-scoped Reports charts, the
+// X-ray call stream.
+const SHOTS: Record<Kind, { src: string; alt: string }> = {
+  pipeline: { src: "/showcase/ingest-batches.png", alt: "Ingest — live batches table with validated and flagged uploads" },
+  rls: { src: "/showcase/reports-charts.png", alt: "Reports — RLS-scoped revenue vs expenses and cost structure" },
+  signal: { src: "/showcase/xray-calls.png", alt: "X-ray panel — live Supabase call stream timed at the fetch seam" },
 }
 
 const STATIONS: { n: string; title: string; lead: string; code: string; kind: Kind }[] = [
@@ -118,7 +121,7 @@ export function Showcase() {
 
               <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 0.7, 0.2, 1] }}>
-                {PANELS[s.kind]()}
+                <PanelShot src={SHOTS[s.kind].src} alt={SHOTS[s.kind].alt} />
               </motion.div>
             </div>
           </div>
