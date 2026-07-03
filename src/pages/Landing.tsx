@@ -68,8 +68,11 @@ export function Landing() {
         <div className="mx-auto max-w-[2400px]">
           {/* Split hero — headline + pitch + CTA LEFT; a torn hole in the paper
               RIGHT, filling the freed space and exposing the dark machinery. */}
-          <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-            <div className="min-w-0 max-w-2xl">
+          <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+            {/* No max-width cap here — the oversized "MACHINERY" headline must use
+                the full left column so it never wraps mid-word. The pitch, CTAs and
+                note below carry their own narrower caps for readability. */}
+            <div className="min-w-0">
               {/* #region xray */}
               <h1 className="display uppercase text-foreground">
                 <span className="block overflow-hidden pb-[0.06em]">
@@ -81,7 +84,7 @@ export function Landing() {
                 <span className="block overflow-hidden pb-[0.04em]">
                   {/* Per-letter reveal — each glyph slides up on load (masked by the
                       overflow-hidden line). reducedMotion="user" disables it. */}
-                  <span className="stencil ignite block text-[clamp(2.25rem,8.5vw,9rem)] leading-[0.85] text-accent" aria-label="Machinery">
+                  <span className="stencil ignite block text-[clamp(2.25rem,7.5vw,9rem)] leading-[0.85] text-accent" aria-label="Machinery">
                     {"Machinery".split("").map((ch, i) => (
                       <motion.span key={i} className="inline-block" aria-hidden initial={{ y: "120%" }} animate={{ y: 0 }}
                         transition={{ duration: 0.7, delay: 0.18 + i * 0.045, ease: [0.22, 0.7, 0.2, 1] }}>
@@ -118,7 +121,7 @@ export function Landing() {
 
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}
                 className="mt-5 max-w-md font-mono text-xs leading-relaxed text-muted-foreground">
-                <span className="text-signal">Read-only sandbox</span> — nothing you do is saved. The torn hole beside this breathes live source — an RLS policy, the report view, the worker beneath. <span className="text-foreground">Click it to x-ray the page.</span>
+                <span className="text-signal">Read-only sandbox</span> — nothing you do is saved. The dark window beside this breathes live source — an RLS policy, the report view, the worker beneath. <span className="text-foreground">Click it to x-ray the page.</span>
               </motion.p>
             </div>
 
@@ -189,25 +192,26 @@ export function Landing() {
         <section>
           <SectionHead eyebrow="X-ray panel" title="The backend runs in the open."
             intro="Every page in the demo carries a live console — the same seam, three lenses on what just ran." />
+          {/* A clean dark console panel (green-tinted), the machinery shown plainly
+              against the lime page — no ragged edge. */}
           <Reveal className="mt-12">
-            <motion.div whileHover={{ y: -4 }}
-              className="overflow-hidden rounded-[1.75rem] border border-border">
-              <div className="flex items-center gap-2 border-b border-border px-6 py-4 font-mono text-xs text-muted-foreground">
-                <span className="size-2 animate-pulse rounded-full bg-foreground" /> X-ray panel · live on every page in the demo
+            <div className="dark overflow-hidden rounded-[1.75rem] border border-accent/20 bg-[oklch(0.18_0.03_158)] text-foreground shadow-[0_30px_70px_-30px_oklch(0.15_0.05_158)]">
+              <div className="flex items-center gap-2 border-b border-accent/15 px-7 py-4 font-mono text-xs text-muted-foreground">
+                <span className="size-2 animate-pulse rounded-full bg-accent" /> X-ray panel · live on every page in the demo
               </div>
-              <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+              <div className="grid divide-y divide-white/5 md:grid-cols-3 md:divide-x md:divide-y-0">
                 {TABS.map((t) => (
-                  <div key={t.k} className="p-7 transition-colors hover:bg-foreground/[0.04]">
-                    <div className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">{t.k}</div>
+                  <div key={t.k} className="p-7 transition-colors hover:bg-white/[0.03]">
+                    <div className="font-mono text-xs font-semibold uppercase tracking-wider text-accent">{t.k}</div>
                     <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t.d}</p>
-                    <div className="mt-5 truncate rounded-xl border border-border px-3 py-2.5 font-mono text-[11px] text-foreground/65">{t.line}</div>
+                    <div className="mt-5 truncate rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 font-mono text-[11px] text-foreground/70">{t.line}</div>
                   </div>
                 ))}
               </div>
-              <div className="border-t border-border px-6 py-6">
+              <div className="border-t border-white/5 px-7 py-6">
                 <PanelXrayButton />
               </div>
-            </motion.div>
+            </div>
           </Reveal>
         </section>
 

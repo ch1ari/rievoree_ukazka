@@ -1,36 +1,39 @@
 import { motion } from "motion/react"
 import { sliceStatement, sliceFrom } from "@/lib/code-xray"
-import img01 from "@/assets/showcase/01-ingest.png"
-import img02 from "@/assets/showcase/02-isolated.png"
-import img03 from "@/assets/showcase/03-observable.png"
+import { PanelIngest, PanelReports, PanelXray } from "@/components/showcase/MiniPanels"
 import dbSrc from "../../worker/src/db.ts?raw"
 import rlsSrc from "../../supabase/migrations/20260605000001_identity_and_tenancy.sql?raw"
 import instrSrc from "@/lib/xray/instrumentedFetch.ts?raw"
 
 /**
  * SHOWCASE — the "Three things" section as a vertical timeline. Each station pairs
- * a real product screenshot of OUR app (owned: ingest pipeline, RLS-scoped report,
- * live X-ray console) with a big index, a Big Shoulders title, a hand-drawn SVG of
- * what it does (pipeline / RLS layers / live signal), and a faint real ?raw code
- * fragment. A green spine draws down the rail as each station reveals on scroll.
- * No foreign assets — screenshots are the project's own UI; everything else is
- * inline SVG / CSS / real repo code. Respects prefers-reduced-motion via MotionConfig.
+ * a LIVE mini-UI of OUR app (ingest batches, RLS-scoped report, x-ray call stream)
+ * with a big index, a Big Shoulders title, a hand-drawn SVG of what it does, and a
+ * faint real ?raw code fragment. A green spine draws down the rail as each station
+ * reveals on scroll. The mini-UIs are built in code (no screenshots), so they stay
+ * on-brand and never go stale. Respects prefers-reduced-motion via MotionConfig.
  */
 type Kind = "pipeline" | "rls" | "signal"
 
-const STATIONS: { n: string; title: string; lead: string; img: string; label: string; code: string; kind: Kind }[] = [
+const PANELS: Record<Kind, () => React.ReactElement> = {
+  pipeline: PanelIngest,
+  rls: PanelReports,
+  signal: PanelXray,
+}
+
+const STATIONS: { n: string; title: string; lead: string; code: string; kind: Kind }[] = [
   {
-    n: "01", title: "Ingest, transformed", kind: "pipeline", img: img01, label: "ingest · batches · live",
+    n: "01", title: "Ingest, transformed", kind: "pipeline",
     lead: "Messy spreadsheets land, get validated, z-score-screened for anomalies, then loaded — a Deno worker and Postgres do the real work. Nothing simulated.",
     code: sliceFrom(dbSrc, "update public.ingest_queue", 7),
   },
   {
-    n: "02", title: "Isolated by row", kind: "rls", img: img02, label: "reports · RLS-scoped",
+    n: "02", title: "Isolated by row", kind: "rls",
     lead: "One query, different rows per role. Tenant isolation is enforced in the database with row-level security — not patched on in the client.",
     code: sliceStatement(rlsSrc, "create policy entities_select"),
   },
   {
-    n: "03", title: "Observable, live", kind: "signal", img: img03, label: "x-ray panel · calls",
+    n: "03", title: "Observable, live", kind: "signal",
     lead: "Every call, pipeline event and policy streams into the X-ray panel as it fires. The backend runs in the open — no black boxes.",
     code: sliceFrom(instrSrc, "xrayCollector.record", 7),
   },
@@ -79,26 +82,6 @@ function Accent({ kind }: { kind: Kind }) {
   )
 }
 
-function Frame({ label, src }: { label: string; src: string }) {
-  return (
-    <div className="group overflow-hidden rounded-xl border border-border">
-      <div className="flex items-center gap-2 border-b border-border bg-foreground/[0.04] px-4 py-2.5">
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="size-2.5 rounded-full bg-foreground/15" />
-        <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground">{label}</span>
-      </div>
-      <div className="relative overflow-hidden">
-        <img src={src} alt="" loading="lazy"
-          className="block max-h-[300px] w-full origin-top object-cover object-top transition-transform duration-500 group-hover:scale-[1.03] lg:max-h-[360px]" />
-        {/* faint green duotone that lifts on hover — the screen "comes alive" */}
-        <div className="pointer-events-none absolute inset-0 bg-accent/12 mix-blend-overlay transition-opacity duration-500 group-hover:opacity-0" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background/40 to-transparent" />
-      </div>
-    </div>
-  )
-}
-
 export function Showcase() {
   return (
     <section>
@@ -135,7 +118,7 @@ export function Showcase() {
 
               <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }}
                 transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 0.7, 0.2, 1] }}>
-                <Frame label={s.label} src={s.img} />
+                {PANELS[s.kind]()}
               </motion.div>
             </div>
           </div>
