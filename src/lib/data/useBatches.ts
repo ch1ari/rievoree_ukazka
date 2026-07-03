@@ -199,3 +199,33 @@ export function useReprocessBatch() {
     },
   })
 }
+
+/** Re-run transform + z-score on a batch's existing staging rows (no re-stage).
+ *  Used after adding the missing accounts to the chart during review. */
+export function useRecheckBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const { error } = await supabase.rpc("recheck_batch", { p_batch_id: batchId })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: (_d, batchId) => {
+      void qc.invalidateQueries({ queryKey: ["batch_rows", batchId] })
+      void qc.invalidateQueries({ queryKey: ["ingest_batches"] })
+    },
+  })
+}
+
+/** Reject a batch (manager/admin) — frees its file hash so it can be re-sent. */
+export function useRejectBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const { error } = await supabase.rpc("reject_batch", { p_batch_id: batchId })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["ingest_batches"] })
+    },
+  })
+}

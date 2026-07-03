@@ -3,7 +3,9 @@ import { X, Check, AlertTriangle, Ban, Scale, Wand2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { SimpleSelect } from "@/components/ui/select"
-import { useBatchRows, useReprocessBatch, type StagingRowView } from "@/lib/data/useBatches"
+import { useBatchRows, useReprocessBatch, useRecheckBatch, type StagingRowView } from "@/lib/data/useBatches"
+import { useEntityAccounts, useUpsertAccounts, type Account } from "@/lib/data/useAccounts"
+import { ClassifyAccounts } from "@/components/ClassifyAccounts"
 import { LoadingNote, ErrorNote } from "@/components/StateNote"
 
 const eur = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })
@@ -21,15 +23,18 @@ function rowState(r: StagingRowView): RowState {
  * balance check. Makes "Approve" meaningful — you see exactly what gets promoted.
  */
 export function BatchDetail({
-  batchId, fileName, period, status, canApprove, approving, onApprove, onClose,
+  batchId, entityId, fileName, period, status, canApprove, approving, onApprove, onReject, rejecting, onClose,
 }: {
   batchId: string
+  entityId: string
   fileName: string
   period: string
   status: string
   canApprove: boolean
   approving: boolean
   onApprove: () => void
+  onReject: () => void
+  rejecting: boolean
   onClose: () => void
 }) {
   const { data: rows, isLoading, error } = useBatchRows(batchId)
@@ -128,10 +133,21 @@ export function BatchDetail({
               real validation + z-score without re-uploading. */}
           {canApprove && status === "awaiting_review" && <RemapPanel batchId={batchId} rows={rows!} />}
 
+          {/* Review-time account mapping — add the codes this batch uses to the
+              entity's chart (auto-classified or by hand), then re-check so they
+              resolve. Mirrors the upload-time ClassifyAccounts step. */}
           {canApprove && status === "awaiting_review" && (
-            <div className="mt-5 flex items-center gap-3">
-              <Button onClick={onApprove} disabled={approving} className="font-mono">
+            <AccountMapPanel batchId={batchId} entityId={entityId} rows={rows!} />
+          )}
+
+          {canApprove && status === "awaiting_review" && (
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Button onClick={onApprove} disabled={approving || rejecting} className="font-mono">
                 {approving ? "Approving…" : `Approve — load ${summary.ok} row${summary.ok === 1 ? "" : "s"}`}
+              </Button>
+              <Button variant="outline" onClick={onReject} disabled={approving || rejecting}
+                className="font-mono text-destructive hover:bg-destructive/10">
+                {rejecting ? "Rejecting…" : "Reject"}
               </Button>
               <span className="font-mono text-[11px] text-muted-foreground">
                 Flagged &amp; error rows stay behind; only the {summary.ok} clean rows load.
@@ -139,6 +155,70 @@ export function BatchDetail({
             </div>
           )}
         </>
+      )}
+    </div>
+  )
+}
+
+/** Review-time account mapping: add the batch's account codes that aren't yet in
+ *  the entity's chart (auto-classified or by hand), then re-check the batch. */
+function AccountMapPanel({ batchId, entityId, rows }: { batchId: string; entityId: string; rows: StagingRowView[] }) {
+  const { data: chart } = useEntityAccounts(entityId || undefined)
+  const upsert = useUpsertAccounts(entityId || undefined)
+  const recheck = useRecheckBatch()
+
+  // Distinct account codes present on the rows but missing from the chart.
+  const unknown = useMemo(() => {
+    const have = new Set((chart ?? []).map((a) => a.code))
+    const codes = new Set<string>()
+    for (const r of rows) if (r.account_code && !have.has(r.account_code)) codes.add(r.account_code)
+    return [...codes]
+  }, [rows, chart])
+
+  const anyCode = rows.some((r) => r.account_code)
+
+  async function confirm(accounts: Account[]) {
+    try {
+      await upsert.mutateAsync(accounts)
+      await recheck.mutateAsync(batchId)
+    } catch { /* surfaced below */ }
+  }
+
+  // No account codes yet → the columns still need mapping (do that first).
+  if (!anyCode) {
+    return (
+      <div className="mt-4 rounded-xl border border-border bg-background/40 p-4 font-mono text-[11px] text-muted-foreground">
+        No account codes read yet — map the Account column in “Remap columns” above first.
+      </div>
+    )
+  }
+  // All codes already in the chart → nothing to map.
+  if (!unknown.length) {
+    return (
+      <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/[0.06] px-4 py-2.5 font-mono text-[11px] text-accent">
+        <Check className="size-3.5" /> All account codes are in the chart.
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4">
+      <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+        <Wand2 className="size-3.5 text-accent" /> Map accounts — {unknown.length} new code{unknown.length === 1 ? "" : "s"} not in the chart
+      </div>
+      <ClassifyAccounts
+        codes={unknown}
+        busy={upsert.isPending || recheck.isPending}
+        onConfirm={confirm}
+        onCancel={() => { /* nothing to cancel — panel just reflects current state */ }}
+      />
+      {(upsert.isError || recheck.isError) && (
+        <p role="alert" className="mt-2 font-mono text-[11px] text-destructive">
+          {((upsert.error || recheck.error) as Error)?.message}
+        </p>
+      )}
+      {recheck.isSuccess && (
+        <p className="mt-2 font-mono text-[11px] text-accent">✓ Accounts added &amp; re-checked — see updated rows above.</p>
       )}
     </div>
   )
