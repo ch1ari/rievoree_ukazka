@@ -47,15 +47,26 @@ export function PageTear() {
   // Static image instead of video when the browser can't compose VP9 alpha
   // (Safari/WebKit) or the user prefers reduced motion. The WebP keeps the
   // transparent hole, so the recess + live source still show through.
-  const still = useMemo(
-    () =>
+  // Modern Safari DECODES VP9/WebM (canPlayType answers "maybe"), but WebKit
+  // never composites its alpha plane — the keyed hole would render as an
+  // opaque lime sheet. Alpha compositing isn't feature-detectable, so gate all
+  // WebKit-engine browsers (incl. every iOS browser) by UA on top of the codec
+  // probe (which still catches older Safari that can't play WebM at all).
+  const still = useMemo(() => {
+    const webkitOnly =
+      /AppleWebKit/i.test(navigator.userAgent) &&
+      !/Chrom(e|ium)|Edg|OPR|Android|Firefox/i.test(navigator.userAgent)
+    return (
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-      document.createElement("video").canPlayType('video/webm; codecs="vp09.00.10.08"') === "",
-    [],
-  )
+      webkitOnly ||
+      document.createElement("video").canPlayType('video/webm; codecs="vp09.00.10.08"') === ""
+    )
+  }, [])
   return (
+    // Accessible name starts with the visible hint text ("click to x-ray")
+    // so voice-control users can activate it by saying what they see.
     <button type="button" onClick={toggle} className="rip group"
-      aria-label="X-ray this page — reveal the real source beneath the surface">
+      aria-label="Click to x-ray this page — reveal the real source beneath the surface">
 
       <div className="rip-scene">
         {/* THE DARK MACHINERY — an emerald recess behind the paper; the animated
