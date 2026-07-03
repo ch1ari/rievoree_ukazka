@@ -161,6 +161,8 @@ export interface StagingRowView {
   is_anomaly: boolean
   anomaly_reason: string | null
   z_score: number | null
+  /** Original row as received (keyed by source column) — drives review-time remap. */
+  raw: Record<string, unknown> | null
 }
 
 /** Rows of one batch (RLS: manager/admin of the entity can read journal_staging). */
@@ -171,11 +173,29 @@ export function useBatchRows(batchId: string | null) {
     queryFn: async (): Promise<StagingRowView[]> => {
       const { data, error } = await supabase
         .from("journal_staging")
-        .select("id,row_num,account_code,txn_date,description,debit,credit,currency,validation_errors,is_anomaly,anomaly_reason,z_score")
+        .select("id,row_num,account_code,txn_date,description,debit,credit,currency,validation_errors,is_anomaly,anomaly_reason,z_score,raw")
         .eq("batch_id", batchId)
         .order("row_num")
       if (error) throw error
       return (data ?? []) as StagingRowView[]
+    },
+  })
+}
+
+/** Re-stage a batch's rows with a corrected column mapping, then re-run the real
+ *  transform + z-score (process_uploaded_rows). Used by the review-time remap. */
+export function useReprocessBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (v: { batchId: string; rows: unknown[] }) => {
+      const { error } = await supabase.rpc("process_uploaded_rows", {
+        p_batch_id: v.batchId, p_rows: v.rows,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: (_d, v) => {
+      void qc.invalidateQueries({ queryKey: ["batch_rows", v.batchId] })
+      void qc.invalidateQueries({ queryKey: ["ingest_batches"] })
     },
   })
 }
