@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
-import { useBatches, useUploadBatch, useApproveBatch } from "@/lib/data/useBatches"
+import { useBatches, useUploadBatch, useApproveBatch, useRejectBatch } from "@/lib/data/useBatches"
 import { useEntityRuleset, useSaveRuleset, DEFAULT_RULES } from "@/lib/data/useRuleset"
 import { useEntityAccounts, useUpsertAccounts, type Account } from "@/lib/data/useAccounts"
 import { parseCsvToRows, type StagingRow, type AmountMode } from "@/lib/data/parseCsv"
@@ -60,6 +60,7 @@ export function Ingest() {
   const batches = useBatches()
   const upload = useUploadBatch()
   const approve = useApproveBatch()
+  const reject = useRejectBatch()
 
   const [entityId, setEntityId] = useState("")
   const [period, setPeriod] = useState("")
@@ -327,12 +328,15 @@ export function Ingest() {
         {selected && (
           <BatchDetail
             batchId={selected.id}
+            entityId={selected.entity_id}
             fileName={selected.file_name}
             period={selected.period}
             status={selected.status}
             canApprove={canManage(role)}
             approving={approve.isPending}
             onApprove={() => approve.mutate(selected.id)}
+            onReject={() => reject.mutate(selected.id, { onSuccess: () => setSelectedId(null) })}
+            rejecting={reject.isPending}
             onClose={() => setSelectedId(null)}
           />
         )}
