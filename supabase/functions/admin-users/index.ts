@@ -1,18 +1,18 @@
 // ============================================================================
 // Edge function: admin-users   (verify_jwt = true)
 //
-// The privileged half of User Management (PLAN.md §6) — the operations that need
-// the Auth Admin API (service role): create a user, reset a password, reset MFA.
-// Role / active-state changes are plain SQL RPCs the frontend calls directly
-// (admin_set_member_role / admin_set_user_active), so they are NOT here.
+// Privileged user management — the parts that need the Auth Admin API. Email
+// based (no temp passwords): invite, password reset and MFA reset all go through
+// Supabase Auth emails (configure SMTP for real delivery).
 //
-// Authorization: every action requires the CALLER to be a platform admin. We
-// verify that with the caller's own JWT via the public is_platform_admin() RPC
-// (so the check runs under RLS / the real role), THEN act with the service role.
-// Credential operations are intentionally platform-admin-only; scoped sandbox
-// admins manage membership (add/remove members) through SQL RPCs instead.
+// Authorization runs under the CALLER's JWT (real role + RLS), then acts with the
+// service role:
+//   * invite_user    — super_admin → anyone/any role; admin → into an entity they
+//                      OWN, role viewer|manager only.
+//   * reset_password — sends a recovery email. Gate: can_manage_user(target).
+//   * reset_mfa      — unenrols the user's factors. Gate: can_manage_user(target).
 //
-//   POST { action: "create_user", email, full_name?, role?, entity_id?, password? }
+//   POST { action: "invite_user", email, full_name?, role?, entity_id? }
 //   POST { action: "reset_password", user_id }
 //   POST { action: "reset_mfa", user_id }
 // ============================================================================
@@ -22,15 +22,12 @@ import { CORS, json, log, UUID_RE } from "../_shared/connectors.ts"
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+// Where invite / recovery links land in the app (must be in Auth → Redirect URLs).
+const APP_BASE_URL = (Deno.env.get("APP_BASE_URL") ?? "http://localhost:5173").replace(/\/$/, "")
+const RESET_REDIRECT = `${APP_BASE_URL}/reset-password`
 const COMPONENT = "admin-users"
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
-const VALID_ROLES = ["super_admin", "admin", "manager", "viewer"]
-
-function randomPassword(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(18))
-  return "Aa1!" + btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "").slice(0, 18)
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
@@ -43,7 +40,7 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => null) as Record<string, unknown> | null
   if (!body || typeof body.action !== "string") return json(400, { error: "missing action" })
 
-  // Caller-scoped client → enforce platform-admin via the real role + RLS.
+  // Caller-scoped client → all authz runs under the real role + RLS.
   const userClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false, autoRefreshToken: false },
@@ -51,23 +48,17 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser(token)
   if (!user) return json(401, { error: "unauthorized" })
 
-  const { data: isAdmin, error: adminErr } = await userClient.rpc("is_platform_admin")
-  if (adminErr) {
-    log(COMPONENT, "error", "admin check failed", { error: adminErr.message })
-    return json(500, { error: "internal error" })
-  }
-  if (isAdmin !== true) return json(403, { error: "platform admin only" })
-
+  // service role → Auth Admin API + privileged RPCs.
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
 
   try {
     switch (body.action) {
-      case "create_user":   return await createUser(body, admin, user.id)
-      case "reset_password":return await resetPassword(body, admin)
-      case "reset_mfa":     return await resetMfa(body, admin)
-      default:              return json(400, { error: "unknown action" })
+      case "invite_user":    return await inviteUser(body, userClient, admin, user.id)
+      case "reset_password": return await resetPassword(body, userClient, admin)
+      case "reset_mfa":      return await resetMfa(body, userClient, admin)
+      default:               return json(400, { error: "unknown action" })
     }
   } catch (e) {
     log(COMPONENT, "error", "unhandled", { action: body.action, error: e instanceof Error ? e.message : String(e) })
@@ -75,88 +66,87 @@ Deno.serve(async (req) => {
   }
 })
 
-async function createUser(
-  body: Record<string, unknown>,
-  admin: ReturnType<typeof createClient>,
-  actorId: string,
+type UClient = ReturnType<typeof createClient>
+
+async function rpcBool(client: UClient, fn: string, args?: Record<string, unknown>): Promise<boolean> {
+  const { data, error } = await client.rpc(fn, args)
+  if (error) throw new Error(error.message)
+  return data === true
+}
+
+async function inviteUser(
+  body: Record<string, unknown>, userClient: UClient, admin: UClient, actorId: string,
 ): Promise<Response> {
   const email = String(body.email ?? "").trim().toLowerCase()
   const fullName = typeof body.full_name === "string" ? body.full_name.trim() : null
   const role = typeof body.role === "string" ? body.role : "viewer"
   const entityId = typeof body.entity_id === "string" ? body.entity_id : null
-  const givenPassword = typeof body.password === "string" && body.password.length >= 6 ? body.password : null
 
   if (!EMAIL_RE.test(email)) return json(400, { error: "valid email required" })
-  if (!VALID_ROLES.includes(role)) return json(400, { error: "invalid role" })
+  if (!["super_admin", "admin", "manager", "viewer"].includes(role)) return json(400, { error: "invalid role" })
   if (entityId && !UUID_RE.test(entityId)) return json(400, { error: "entity_id must be a uuid" })
 
-  const password = givenPassword ?? randomPassword()
-  const { data: created, error } = await admin.auth.admin.createUser({
-    email, password, email_confirm: true, user_metadata: { full_name: fullName },
-  })
-  if (error || !created?.user) {
-    return json(400, { error: error?.message ?? "could not create user" })
+  // ---- Authorize the invite under the caller's role ------------------------
+  const isSuper = await rpcBool(userClient, "am_i_super_admin")
+  if (!isSuper) {
+    // Scoped admin: must target their OWN entity, role limited to viewer/manager.
+    if (!entityId) return json(403, { error: "choose one of your entities to invite into" })
+    if (!["viewer", "manager"].includes(role)) return json(403, { error: "an admin may only invite viewer or manager" })
+    const owns = await rpcBool(userClient, "do_i_own_entity", { p_entity_id: entityId })
+    if (!owns) return json(403, { error: "you can only invite into a company you own" })
   }
-  const newId = created.user.id
 
-  // The on_auth_user_created trigger already inserted the profile (viewer). Stamp
-  // the chosen role through the service-role RPC (frozen-column opt-in lives
-  // inside it). The human caller was already verified as a platform admin above.
+  // ---- Send the invite email (creates the user with NO password) -----------
+  const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName },
+    redirectTo: RESET_REDIRECT,
+  })
+  if (error || !invited?.user) {
+    return json(400, { error: error?.message ?? "could not invite user" })
+  }
+  const newId = invited.user.id
+
   if (role !== "viewer") {
     const { error: roleErr } = await admin.rpc("service_set_user_role", { p_user_id: newId, p_role: role })
     if (roleErr) log(COMPONENT, "warn", "role stamp failed", { newId, error: roleErr.message })
   }
-  // Optional: drop them straight into an entity (service role bypasses RLS).
   if (entityId) {
     const { error: memErr } = await admin.from("entity_members")
       .insert({ entity_id: entityId, user_id: newId, granted_by: actorId })
     if (memErr) log(COMPONENT, "warn", "membership add failed", { newId, entityId, error: memErr.message })
   }
 
-  log(COMPONENT, "info", "user created", { newId, role, entityId })
-  return json(201, {
-    status: "created",
-    user_id: newId,
-    email,
-    // Local has no SMTP — return the temp password so the admin can hand it over.
-    // Omitted when the admin supplied one.
-    temp_password: givenPassword ? undefined : password,
-  })
+  log(COMPONENT, "info", "user invited", { newId, role, entityId })
+  return json(201, { status: "invited", user_id: newId, email })
 }
 
-async function resetPassword(
-  body: Record<string, unknown>,
-  admin: ReturnType<typeof createClient>,
-): Promise<Response> {
+async function resetPassword(body: Record<string, unknown>, userClient: UClient, admin: UClient): Promise<Response> {
   const userId = String(body.user_id ?? "")
   if (!UUID_RE.test(userId)) return json(400, { error: "user_id must be a uuid" })
+  if (!(await rpcBool(userClient, "can_manage_user", { p_user_id: userId }))) {
+    return json(403, { error: "not authorized to manage this user" })
+  }
 
   const { data: target, error: getErr } = await admin.auth.admin.getUserById(userId)
   if (getErr || !target?.user?.email) return json(404, { error: "user not found" })
 
-  // A recovery link the admin can deliver (no SMTP locally). The link sets a new
-  // password; we never see or set the user's secret ourselves.
-  const { data: link, error } = await admin.auth.admin.generateLink({
-    type: "recovery", email: target.user.email,
-  })
+  // Send a recovery email (the user sets their own new password from the link).
+  // Uses the public method via an anon client so Auth actually dispatches the mail.
+  const anon = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+  const { error } = await anon.auth.resetPasswordForEmail(target.user.email, { redirectTo: RESET_REDIRECT })
   if (error) return json(400, { error: error.message })
 
-  log(COMPONENT, "info", "password reset link issued", { userId })
-  return json(200, {
-    status: "reset",
-    user_id: userId,
-    recovery_link: link?.properties?.action_link,
-  })
+  log(COMPONENT, "info", "password recovery email sent", { userId })
+  return json(200, { status: "email_sent", user_id: userId })
 }
 
-async function resetMfa(
-  body: Record<string, unknown>,
-  admin: ReturnType<typeof createClient>,
-): Promise<Response> {
+async function resetMfa(body: Record<string, unknown>, userClient: UClient, admin: UClient): Promise<Response> {
   const userId = String(body.user_id ?? "")
   if (!UUID_RE.test(userId)) return json(400, { error: "user_id must be a uuid" })
+  if (!(await rpcBool(userClient, "can_manage_user", { p_user_id: userId }))) {
+    return json(403, { error: "not authorized to manage this user" })
+  }
 
-  // List + delete every enrolled factor — the user re-enrols fresh afterwards.
   const { data: factors, error: listErr } = await admin.auth.admin.mfa.listFactors({ userId })
   if (listErr) return json(400, { error: listErr.message })
 

@@ -29,9 +29,22 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [stage, setStage] = useState<"creds" | "mfa">("creds")
+  const [forgot, setForgot] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   const dest = redirect ?? "/dashboard"
   const done = () => navigate({ to: dest })
+
+  async function sendReset() {
+    if (!email.trim()) { setError("Enter your email first."); return }
+    setBusy(true); setError(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    setResetSent(true)
+  }
 
   async function afterPassword() {
     if (await needsMfaChallenge()) { setStage("mfa"); return }
@@ -52,6 +65,28 @@ export function Login() {
     </AuthShell>
   )
 
+  if (forgot) return (
+    <AuthShell title="Reset password" subtitle="We'll email you a link to set a new password.">
+      {resetSent ? (
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          If an account exists for <span className="text-foreground">{email}</span>, a reset link is on its way.
+          Check your inbox.
+        </p>
+      ) : (
+        <form onSubmit={(e) => { e.preventDefault(); void sendReset() }} className="flex flex-col gap-3">
+          <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required className={fieldClass} />
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <button type="submit" disabled={busy}
+            className="mt-2 rounded-full bg-accent px-6 py-3.5 text-sm font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110 disabled:opacity-60">
+            {busy ? "Sending…" : "Send reset link"}
+          </button>
+        </form>
+      )}
+      <button onClick={() => { setForgot(false); setResetSent(false); setError(null) }}
+        className="mt-4 text-sm text-muted-foreground underline-offset-4 hover:underline">← Back to sign in</button>
+    </AuthShell>
+  )
+
   return (
     <AuthShell title="Sign in">
       <form onSubmit={(e) => { e.preventDefault(); void signIn(email, password) }} className="flex flex-col gap-3">
@@ -63,6 +98,9 @@ export function Login() {
           {busy ? "Entering…" : "Sign in"}
         </button>
       </form>
+
+      <button onClick={() => { setForgot(true); setError(null) }}
+        className="mt-3 text-sm text-muted-foreground underline-offset-4 hover:underline">Forgot password?</button>
 
       <div className="mt-5">
         <OAuthButtons next={dest} />

@@ -11,13 +11,13 @@ export interface OrgMember {
   role: AppRole
   is_active: boolean
   is_self: boolean
+  can_manage: boolean
   mfa_verified: boolean
   entities: { id: string; name: string }[]
   created_at: string
 }
 
-/** The admin user table: platform admin → everyone; scoped admin → members of
- *  owned entities. The RPC enforces "admin only" and the scoping server-side. */
+/** The admin user table: super_admin → everyone; admin → their company. */
 export function useOrgMembers() {
   const { user } = useAuth()
   return useQuery({
@@ -31,14 +31,14 @@ export function useOrgMembers() {
   })
 }
 
-/** Whether the signed-in caller is a GLOBAL platform admin (unlocks credential ops). */
-export function useIsPlatformAdmin() {
+/** Whether the caller is super_admin (global) vs a company-scoped admin. */
+export function useIsSuperAdmin() {
   const { user } = useAuth()
   return useQuery({
-    queryKey: ["is_platform_admin", user?.id ?? "anon"],
+    queryKey: ["is_super_admin", user?.id ?? "anon"],
     enabled: Boolean(user),
     queryFn: async (): Promise<boolean> => {
-      const { data, error } = await supabase.rpc("is_platform_admin")
+      const { data, error } = await supabase.rpc("am_i_super_admin")
       if (error) throw new Error(error.message)
       return data === true
     },
@@ -94,30 +94,31 @@ export function useSetUserActive() {
   })
 }
 
-export interface CreateUserResult { status: string; user_id: string; email: string; temp_password?: string }
+export interface InviteUserResult { status: string; user_id: string; email: string }
 
-export function useCreateUser() {
+/** Invite a new user by email (sends an invite link — they set their own password). */
+export function useInviteUser() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: async (v: { email: string; fullName?: string; role?: AppRole; entityId?: string; password?: string }): Promise<CreateUserResult> => {
+    mutationFn: async (v: { email: string; fullName?: string; role?: AppRole; entityId?: string }): Promise<InviteUserResult> => {
       const { data, error } = await supabase.functions.invoke("admin-users", {
-        body: { action: "create_user", email: v.email, full_name: v.fullName, role: v.role, entity_id: v.entityId, password: v.password },
+        body: { action: "invite_user", email: v.email, full_name: v.fullName, role: v.role, entity_id: v.entityId },
       })
       if (error) throw new Error(await fnError(error))
-      return data as CreateUserResult
+      return data as InviteUserResult
     },
     onSuccess: invalidate,
   })
 }
 
+/** Admin-triggered password reset → sends the user a recovery email. */
 export function useResetPassword() {
   return useMutation({
-    mutationFn: async (userId: string): Promise<string | undefined> => {
-      const { data, error } = await supabase.functions.invoke("admin-users", {
+    mutationFn: async (userId: string): Promise<void> => {
+      const { error } = await supabase.functions.invoke("admin-users", {
         body: { action: "reset_password", user_id: userId },
       })
       if (error) throw new Error(await fnError(error))
-      return (data as { recovery_link?: string }).recovery_link
     },
   })
 }

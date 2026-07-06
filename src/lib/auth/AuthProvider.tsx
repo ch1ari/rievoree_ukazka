@@ -19,8 +19,11 @@ interface AuthState {
   session: Session | null
   user: User | null
   role: string | null
+  /** profiles.is_active for the signed-in user. null until loaded. A deactivated
+   *  account (false) is blocked at the shell; RLS already cuts data access too. */
+  active: boolean | null
   loading: boolean
-  /** Re-read the caller's role from profiles — call after a live role switch. */
+  /** Re-read the caller's role + active flag from profiles — call after a switch. */
   refreshRole: () => Promise<void>
 }
 
@@ -28,6 +31,7 @@ export const AuthContext = createContext<AuthState>({
   session: null,
   user: null,
   role: null,
+  active: null,
   loading: true,
   refreshRole: async () => {},
 })
@@ -35,6 +39,7 @@ export const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [role, setRole] = useState<string | null>(null)
+  const [active, setActive] = useState<boolean | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -66,10 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadRole = useCallback(async () => {
     if (!uid) {
       setRole(null)
+      setActive(null)
       return
     }
-    const { data } = await supabase.from("profiles").select("role").eq("id", uid).maybeSingle()
+    // Own row is readable regardless of is_active (policy: id = auth.uid()), so a
+    // deactivated user still learns they're deactivated.
+    const { data } = await supabase.from("profiles").select("role,is_active").eq("id", uid).maybeSingle()
     setRole((data?.role as string | undefined) ?? null)
+    setActive((data?.is_active as boolean | undefined) ?? null)
   }, [uid])
 
   // Drives the "acting as <role>" label; re-runs whenever the identity changes.
@@ -79,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user: session?.user ?? null, role, loading, refreshRole: loadRole }}
+      value={{ session, user: session?.user ?? null, role, active, loading, refreshRole: loadRole }}
     >
       {children}
     </AuthContext.Provider>

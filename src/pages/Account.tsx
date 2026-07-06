@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { motion } from "motion/react"
-import { Check, ShieldCheck } from "lucide-react"
+import { Check, ShieldCheck, KeyRound } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth/useAuth"
 import { setMyRole, type SwitchableRole } from "@/lib/auth/mfa"
 import { EntityManager } from "@/components/EntityManager"
@@ -89,7 +90,61 @@ export function Account() {
         )}
       </section>
 
+      <ChangePassword />
+
       <EntityManager />
     </div>
+  )
+}
+
+const pwInputClass =
+  "rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-accent/50"
+
+/** Self-service password change for the signed-in user (no email round-trip). */
+function ChangePassword() {
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null); setSaved(false)
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return }
+    if (password !== confirm) { setError("Passwords don't match."); return }
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    setBusy(false)
+    if (error) { setError(error.message); return }
+    setPassword(""); setConfirm(""); setSaved(true)
+  }
+
+  return (
+    <section className="mt-8 max-w-2xl rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border md:p-7">
+      <div className="flex items-center gap-2">
+        <KeyRound className="size-4 text-accent" />
+        <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Change password</h2>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Set a new password for your account. You stay signed in.
+      </p>
+      <form onSubmit={submit} className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">New password</span>
+          <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 6 characters" className={pwInputClass} />
+        </label>
+        <label className="flex flex-1 flex-col gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Confirm</span>
+          <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="repeat" className={pwInputClass} />
+        </label>
+        <button type="submit" disabled={busy || !password}
+          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110 disabled:opacity-50">
+          {busy ? "Saving…" : "Update"}
+        </button>
+      </form>
+      {error && <p role="alert" className="mt-3 font-mono text-xs text-destructive">{error}</p>}
+      {saved && <p className="mt-3 font-mono text-xs text-accent">✓ Password updated.</p>}
+    </section>
   )
 }

@@ -56,11 +56,11 @@ const SHOWCASE = [
 // Routes the demo tour must not reach (write / account features → sign in first).
 const DEMO_BLOCKED = new Set(["/ingest", "/users", "/connectors", "/account"])
 
-const PUBLIC = new Set(["/", "/login", "/register", "/about"])
-const PAPER_ROUTES = new Set(["/", "/login", "/register", "/about"])
+const PUBLIC = new Set(["/", "/login", "/register", "/about", "/reset-password"])
+const PAPER_ROUTES = new Set(["/", "/login", "/register", "/about", "/reset-password"])
 
 export function AppShell() {
-  const { session, role, loading } = useAuth()
+  const { session, role, active, loading } = useAuth()
   const navigate = useNavigate()
   const path = useRouterState({ select: (s) => s.location.pathname })
   const onPaper = PAPER_ROUTES.has(path)
@@ -91,6 +91,11 @@ export function AppShell() {
   // Guard: anon on a protected route → login.
   if (!session && !PUBLIC.has(path)) {
     return <Navigate to="/login" search={{ redirect: path }} />
+  }
+  // Guard: a deactivated account sees nothing but a notice (RLS also cuts all
+  // data server-side; this is the human-facing half).
+  if (session && session.user.email !== DEMO_EMAIL && active === false) {
+    return <DeactivatedScreen email={session.user.email ?? ""} />
   }
   // Guard: the demo tour cannot reach write/account routes — sign in first.
   if (isDemo && DEMO_BLOCKED.has(path)) {
@@ -257,6 +262,25 @@ function MobileNav({ mode, navItems, identity, onDemo, onExitDemo }: { mode: "us
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+function DeactivatedScreen({ email }: { email: string }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5 px-6 text-center">
+      <span className="grid size-12 place-items-center rounded-2xl bg-destructive/15 text-destructive ring-1 ring-destructive/30">
+        <ScanLine className="size-6" />
+      </span>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Account deactivated</h1>
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+          Access for <span className="text-foreground">{email}</span> has been turned off by an
+          administrator. Contact your admin if you think this is a mistake.
+        </p>
+      </div>
+      <Button variant="outline" className="font-mono text-xs uppercase tracking-wider"
+        onClick={() => void supabase.auth.signOut()}>Sign out</Button>
+    </div>
   )
 }
 
