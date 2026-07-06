@@ -24,6 +24,10 @@ shell-*.png
 dark-*.png
 dark2-*.png
 
+# committed product screenshots for the landing showcase — real assets, must
+# ship. Overrides the screenshot-artifact patterns above (e.g. xray-*.png).
+!public/showcase/*.png
+
 # design reference images (local only, never committed)
 .design-refs/
 paper-*.png
