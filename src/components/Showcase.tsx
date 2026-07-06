@@ -15,13 +15,13 @@ import instrSrc from "@/lib/xray/instrumentedFetch.ts?raw"
  */
 type Kind = "pipeline" | "rls" | "signal"
 
-// Real product screenshots (public/showcase), captured from the live app. Paired
-// with the three stations — ingest batches, the RLS-scoped Reports charts, the
-// X-ray call stream.
+// Real, full-page product screenshots (public/showcase), captured from the live
+// app. Paired with the three stations — the ingest page, the RLS-scoped
+// dashboard, and the dashboard with the X-ray call stream open.
 const SHOTS: Record<Kind, { src: string; alt: string }> = {
-  pipeline: { src: "/showcase/ingest-batches.png", alt: "Ingest — live batches table with validated and flagged uploads" },
-  rls: { src: "/showcase/reports-charts.png", alt: "Reports — RLS-scoped revenue vs expenses and cost structure" },
-  signal: { src: "/showcase/xray-calls.png", alt: "X-ray panel — live Supabase call stream timed at the fetch seam" },
+  pipeline: { src: "/showcase/ingest-batches.png", alt: "Ingest — upload data and the live batches table with validated and flagged uploads" },
+  rls: { src: "/showcase/dashboard-overview.png", alt: "Dashboard — RLS-filtered KPIs and the revenue / operating-margin chart, scoped to your entities" },
+  signal: { src: "/showcase/xray-calls.png", alt: "X-ray panel — the live Supabase call stream across the session" },
 }
 
 const STATIONS: { n: string; title: string; lead: string; code: string; kind: Kind }[] = [
