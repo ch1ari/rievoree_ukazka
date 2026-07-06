@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { SimpleSelect } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
+import { ConnectorPipeline } from "@/components/ConnectorPipeline"
 import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import {
@@ -103,7 +104,65 @@ export function Connectors() {
           </div>
         )}
       </section>
+
+      <HowItWorks />
     </div>
+  )
+}
+
+/** Explains — for visitors — why Google Drive runs in demo mode, and how the
+ *  whole connector machinery is actually built. Reassures that it's real code. */
+function HowItWorks() {
+  return (
+    <section className="mt-16 grid gap-4 lg:grid-cols-2">
+      <div className="rounded-[1.5rem] border border-accent/20 bg-accent/[0.05] p-6 md:p-7">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="size-4 text-accent" />
+          <h3 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Why Google Drive is in demo mode</h3>
+        </div>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          The Google Drive connector is <span className="text-foreground">fully implemented</span> — real OAuth2
+          (offline refresh token), the Drive <span className="text-foreground">Changes API</span> with a resumable
+          page token, and an idempotent file-claim ledger. You can connect a real Drive folder above.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          It isn't published for the public, though, on purpose. Drive's <code className="rounded bg-secondary px-1 text-foreground">drive.readonly</code> is
+          a Google <span className="text-foreground">“restricted” scope</span>: to remove the “unverified app”
+          warning, Google requires app verification — a verified domain, a public privacy policy, and a
+          <span className="text-foreground"> paid annual security assessment (~$540+)</span> that takes weeks.
+          For a portfolio demo that's not worth it.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          So instead, <span className="text-foreground">“Simulate sync (demo)”</span> runs a synthetic file through
+          the <span className="text-foreground">exact same pipeline</span> — no Google sign-in, no scary screen,
+          fake data only. Same machinery, visible end-to-end.
+        </p>
+      </div>
+
+      <div className="rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border md:p-7">
+        <div className="flex items-center gap-2">
+          <Cable className="size-4 text-accent" />
+          <h3 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">How this is built</h3>
+        </div>
+        <ul className="mt-4 space-y-2.5 text-sm leading-relaxed text-muted-foreground">
+          {[
+            ["Edge functions (Deno)", "OAuth start/callback, Drive sync, and a public HMAC webhook receiver."],
+            ["HMAC webhook", "constant-time signature verify — anyone can POST a signed CSV and watch it flow in."],
+            ["SQL pipeline", "staging → transform (rules + account resolution) → z-score anomaly scan → awaiting_review."],
+            ["Security", "row-level security per entity, secret columns hidden from the API, SECURITY DEFINER RPCs."],
+            ["Resumable + idempotent", "Drive page-token cursor survives restarts; a file is ingested at most once."],
+          ].map(([t, d]) => (
+            <li key={t} className="flex gap-2.5">
+              <Check className="mt-0.5 size-3.5 shrink-0 text-accent" />
+              <span><span className="text-foreground">{t}</span> — {d}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 font-mono text-[11px] text-muted-foreground">
+          Click <span className="text-accent">Simulate sync (demo)</span> on a Drive connector to watch the chain run live.
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -237,6 +296,7 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
   const [oauthBusy, setOauthBusy] = useState(false)
   const [oauthErr, setOauthErr] = useState<string | null>(null)
   const [showWebhook, setShowWebhook] = useState(false)
+  const [playKey, setPlayKey] = useState(0)
 
   const Icon = c.kind === "gdrive" ? HardDrive : Webhook
   const isGdrive = c.kind === "gdrive"
@@ -301,7 +361,8 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
         )}
         {isGdrive && (
           <Button size="xs" variant="secondary" className="font-mono text-[10px]" disabled={simulate.isPending}
-            onClick={() => simulate.mutate(c.id)} title="Runs a synthetic file through the real pipeline — no Google sign-in">
+            onClick={() => { setPlayKey((k) => k + 1); simulate.mutate(c.id) }}
+            title="Runs a synthetic file through the real pipeline — no Google sign-in">
             <Sparkles className="size-3.5" /> {simulate.isPending ? "Simulating…" : "Simulate sync (demo)"}
           </Button>
         )}
@@ -338,6 +399,9 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
       {sync.data && <p className="mt-2 font-mono text-[11px] text-accent">Sync ok — {sync.data.ingested.length} file(s) ingested, {sync.data.skipped} skipped.</p>}
       {simulate.isError && <p className="mt-2 font-mono text-[11px] text-destructive">{(simulate.error as Error).message}</p>}
       {simulate.data && <p className="mt-2 font-mono text-[11px] text-accent">Demo file <span className="text-foreground">{simulate.data.file}</span> pushed through the pipeline — see it on Ingest.</p>}
+
+      {/* Live animated ETL chain — replays on each Simulate sync. */}
+      {isGdrive && playKey > 0 && <ConnectorPipeline playKey={playKey} running={simulate.isPending} />}
 
       {showWebhook && !isGdrive && (
         <div className="mt-3 rounded-xl border border-border bg-background/40 p-4">
