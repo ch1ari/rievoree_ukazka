@@ -124,6 +124,20 @@ export function useSyncConnector() {
   })
 }
 
+/** Demo sync: push a synthetic file through the real pipeline (no Google OAuth,
+ *  no consent warning) — lights up the whole Drive → ETL → review chain. */
+export function useSimulateSync() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.rpc("simulate_connector_sync", { p_connector_id: id })
+      if (error) throw new Error(error.message)
+      return data as { status: string; batch_id: string; file: string }
+    },
+    onSuccess: invalidate,
+  })
+}
+
 /** Begin the Google Drive OAuth flow → redirect the browser to Google's consent. */
 export async function startDriveOAuth(connectorId: string): Promise<{ error: string | null }> {
   const { data, error } = await supabase.functions.invoke("connector-oauth", {

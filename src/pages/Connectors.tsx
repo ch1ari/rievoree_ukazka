@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { motion } from "motion/react"
 import {
   Cable, HardDrive, Webhook, Plus, RefreshCw, Play, Pause, Trash2,
-  Pencil, Check, X, Copy, KeyRound, Link2, AlertTriangle,
+  Pencil, Check, X, Copy, KeyRound, Link2, AlertTriangle, Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import {
   useConnectors, useCreateConnector, useRenameConnector, useDeleteConnector,
-  useSetConnectorStatus, useRotateSecret, useSyncConnector, startDriveOAuth,
+  useSetConnectorStatus, useRotateSecret, useSyncConnector, useSimulateSync, startDriveOAuth,
   webhookUrl, type Connector, type ConnectorKind,
 } from "@/lib/data/useConnectors"
 
@@ -228,6 +228,7 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
   const setStatus = useSetConnectorStatus()
   const rotate = useRotateSecret()
   const sync = useSyncConnector()
+  const simulate = useSimulateSync()
 
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(c.name)
@@ -298,6 +299,12 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
             <RefreshCw className={cn("size-3.5", sync.isPending && "animate-spin")} /> {sync.isPending ? "Syncing…" : "Sync now"}
           </Button>
         )}
+        {isGdrive && (
+          <Button size="xs" variant="secondary" className="font-mono text-[10px]" disabled={simulate.isPending}
+            onClick={() => simulate.mutate(c.id)} title="Runs a synthetic file through the real pipeline — no Google sign-in">
+            <Sparkles className="size-3.5" /> {simulate.isPending ? "Simulating…" : "Simulate sync (demo)"}
+          </Button>
+        )}
         {!isGdrive && (
           <Button size="xs" variant="secondary" className="font-mono text-[10px]" onClick={() => setShowWebhook((v) => !v)}>
             <Link2 className="size-3.5" /> {showWebhook ? "Hide endpoint" : "Show endpoint"}
@@ -329,6 +336,8 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
 
       {sync.isError && <p className="mt-2 font-mono text-[11px] text-destructive">{(sync.error as Error).message}</p>}
       {sync.data && <p className="mt-2 font-mono text-[11px] text-accent">Sync ok — {sync.data.ingested.length} file(s) ingested, {sync.data.skipped} skipped.</p>}
+      {simulate.isError && <p className="mt-2 font-mono text-[11px] text-destructive">{(simulate.error as Error).message}</p>}
+      {simulate.data && <p className="mt-2 font-mono text-[11px] text-accent">Demo file <span className="text-foreground">{simulate.data.file}</span> pushed through the pipeline — see it on Ingest.</p>}
 
       {showWebhook && !isGdrive && (
         <div className="mt-3 rounded-xl border border-border bg-background/40 p-4">
