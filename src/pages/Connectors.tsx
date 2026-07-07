@@ -11,6 +11,7 @@ import { SimpleSelect } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { LoadingNote, ErrorNote, EmptyNote } from "@/components/StateNote"
 import { ConnectorPipeline } from "@/components/ConnectorPipeline"
+import { ConnectorContactForm } from "@/components/ConnectorContactForm"
 import { useAuth } from "@/lib/auth/useAuth"
 import { useEntities } from "@/lib/data/useEntities"
 import {
@@ -137,6 +138,12 @@ function HowItWorks() {
           the <span className="text-foreground">exact same pipeline</span> — no Google sign-in, no scary screen,
           fake data only. Same machinery, visible end-to-end.
         </p>
+        <div className="mt-5 border-t border-accent/20 pt-4">
+          <p className="mb-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            Want to test it with your own Drive?
+          </p>
+          <ConnectorContactForm source="gdrive-real-access" />
+        </div>
       </div>
 
       <div className="rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border md:p-7">
@@ -296,7 +303,7 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
   const [oauthBusy, setOauthBusy] = useState(false)
   const [oauthErr, setOauthErr] = useState<string | null>(null)
   const [showWebhook, setShowWebhook] = useState(false)
-  const [playKey, setPlayKey] = useState(0)
+  const [showGuide, setShowGuide] = useState(false)
 
   const Icon = c.kind === "gdrive" ? HardDrive : Webhook
   const isGdrive = c.kind === "gdrive"
@@ -360,10 +367,15 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
           </Button>
         )}
         {isGdrive && (
-          <Button size="xs" variant="secondary" className="font-mono text-[10px]" disabled={simulate.isPending}
-            onClick={() => { setPlayKey((k) => k + 1); simulate.mutate(c.id) }}
+          <Button size="xs" variant="secondary" className="font-mono text-[10px]" onClick={() => setShowGuide((v) => !v)}>
+            <Sparkles className="size-3.5" /> {showGuide ? "Hide walkthrough" : "How it works"}
+          </Button>
+        )}
+        {isGdrive && (
+          <Button size="xs" variant="ghost" className="font-mono text-[10px]" disabled={simulate.isPending}
+            onClick={() => simulate.mutate(c.id)}
             title="Runs a synthetic file through the real pipeline — no Google sign-in">
-            <Sparkles className="size-3.5" /> {simulate.isPending ? "Simulating…" : "Simulate sync (demo)"}
+            <RefreshCw className={cn("size-3.5", simulate.isPending && "animate-spin")} /> {simulate.isPending ? "Simulating…" : "Simulate sync (demo)"}
           </Button>
         )}
         {!isGdrive && (
@@ -400,8 +412,14 @@ function ConnectorCard({ connector: c, entityName }: { connector: Connector; ent
       {simulate.isError && <p className="mt-2 font-mono text-[11px] text-destructive">{(simulate.error as Error).message}</p>}
       {simulate.data && <p className="mt-2 font-mono text-[11px] text-accent">Demo file <span className="text-foreground">{simulate.data.file}</span> pushed through the pipeline — see it on Ingest.</p>}
 
-      {/* Live animated ETL chain — replays on each Simulate sync. */}
-      {isGdrive && playKey > 0 && <ConnectorPipeline playKey={playKey} running={simulate.isPending} />}
+      {/* Guided, click-through walkthrough (+ live demo + request real access). */}
+      {isGdrive && showGuide && (
+        <ConnectorPipeline
+          onRunDemo={() => simulate.mutate(c.id)}
+          running={simulate.isPending}
+          ranFile={simulate.data?.file ?? null}
+        />
+      )}
 
       {showWebhook && !isGdrive && (
         <div className="mt-3 rounded-xl border border-border bg-background/40 p-4">
