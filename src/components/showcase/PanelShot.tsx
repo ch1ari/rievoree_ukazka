@@ -5,8 +5,8 @@
  * actual product with real data. Framed in a soft dark-green console shell so the
  * near-black screenshots pop against the lime page and stay on-brand.
  *
- * All three captures share a 4:3 ratio and show the full top of each page (no
- * tight cropping); the box reserves that space via aspect-ratio (+ intrinsic
+ * Each is a full 1440×1080 browser-window capture (4:3) — the whole app window,
+ * nothing chopped. The box reserves that ratio via aspect-ratio (+ intrinsic
  * width/height) so the panel never collapses to a sliver while the image loads.
  */
 export function PanelShot({ src, alt }: { src: string; alt: string }) {
@@ -15,8 +15,8 @@ export function PanelShot({ src, alt }: { src: string; alt: string }) {
       <img
         src={src}
         alt={alt}
-        width={2304}
-        height={1728}
+        width={2880}
+        height={2160}
         decoding="async"
         className="block aspect-[4/3] w-full object-cover object-top"
       />
