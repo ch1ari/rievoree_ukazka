@@ -248,8 +248,11 @@ function MemberRow({ member: m, isSuper }: { member: OrgMember; isSuper: boolean
                   <KeyRound className="size-3.5" /> Password
                 </Button>
                 <Button size="xs" variant="ghost" className="font-mono text-[10px]" disabled={resetMfa.isPending || !m.mfa_verified}
-                  onClick={() => resetMfa.mutate(m.id)}>
-                  <Smartphone className="size-3.5" /> MFA
+                  onClick={() => resetMfa.mutate(m.id)}
+                  title={m.mfa_verified
+                    ? "Reset MFA — removes the user's authenticator so they can re-enrol"
+                    : "This user has no MFA to reset. Turning MFA on can only be done by the user themselves (Account → Two-factor)."}>
+                  <Smartphone className="size-3.5" /> Reset MFA
                 </Button>
                 <Button size="xs" variant="ghost" className={cn("font-mono text-[10px]", m.is_active && "text-destructive")}
                   disabled={setActive.isPending}

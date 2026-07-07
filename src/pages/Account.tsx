@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "motion/react"
-import { Check, ShieldCheck, KeyRound } from "lucide-react"
+import { Check, ShieldCheck, KeyRound, Smartphone } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth/useAuth"
-import { setMyRole, type SwitchableRole } from "@/lib/auth/mfa"
+import { setMyRole, listTotpFactors, getVerifiedFactorId, unenrollTotp, type SwitchableRole } from "@/lib/auth/mfa"
+import { TwoFactorEnroll } from "@/components/auth/TwoFactorEnroll"
 import { EntityManager } from "@/components/EntityManager"
 
 const ROLES: { value: SwitchableRole; label: string; blurb: string }[] = [
@@ -92,8 +93,77 @@ export function Account() {
 
       <ChangePassword />
 
+      <TwoFactor />
+
       <EntityManager />
     </div>
+  )
+}
+
+/** Self-service two-factor: turn TOTP on (scan QR + verify) or off. The user is
+ *  the only one who can enrol — an admin can only RESET (remove) it for others. */
+function TwoFactor() {
+  const [status, setStatus] = useState<"loading" | "on" | "off">("loading")
+  const [enrolling, setEnrolling] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function refresh() {
+    const factors = await listTotpFactors()
+    setStatus(factors.some((f) => f.status === "verified") ? "on" : "off")
+  }
+  useEffect(() => { void refresh() }, [])
+
+  async function disable() {
+    setBusy(true); setError(null)
+    try {
+      const id = await getVerifiedFactorId()
+      if (id) await unenrollTotp(id)
+      await refresh()
+      setEnrolling(false)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "could not disable 2FA")
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <section className="mt-8 max-w-2xl rounded-[1.5rem] bg-card p-6 shadow-soft ring-1 ring-border md:p-7">
+      <div className="flex items-center gap-2">
+        <Smartphone className="size-4 text-accent" />
+        <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Two-factor authentication</h2>
+        <span className={cn(
+          "ml-auto rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-widest ring-1",
+          status === "on" ? "bg-signal/15 text-signal ring-signal/30" : "bg-secondary text-muted-foreground ring-border",
+        )}>
+          {status === "loading" ? "…" : status === "on" ? "On" : "Off"}
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Protect your account with an authenticator app (TOTP). You enable it here yourself —
+        for security, nobody can turn it on for you; an admin can only reset it.
+      </p>
+
+      {enrolling ? (
+        <div className="mt-5">
+          <TwoFactorEnroll
+            onVerified={() => { setEnrolling(false); void refresh() }}
+            onSkip={() => setEnrolling(false)}
+          />
+        </div>
+      ) : status === "on" ? (
+        <button onClick={disable} disabled={busy}
+          className="mt-5 inline-flex items-center gap-1.5 rounded-md border border-destructive/40 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-destructive transition hover:bg-destructive/10 disabled:opacity-50">
+          {busy ? "Disabling…" : "Disable 2FA"}
+        </button>
+      ) : status === "off" ? (
+        <button onClick={() => setEnrolling(true)}
+          className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-widest text-accent-foreground transition hover:brightness-110">
+          <ShieldCheck className="size-4" /> Enable 2FA
+        </button>
+      ) : null}
+
+      {error && <p role="alert" className="mt-3 font-mono text-xs text-destructive">{error}</p>}
+    </section>
   )
 }
 
